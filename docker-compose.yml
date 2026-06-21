@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: jav_metadatahub_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-javhub}
+      POSTGRES_USER: ${POSTGRES_USER:-javhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-javhub}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
