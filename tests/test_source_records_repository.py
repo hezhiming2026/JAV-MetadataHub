@@ -120,6 +120,54 @@ def test_get_by_source_key_strips_values_and_uses_scalar() -> None:
     }
 
 
+def test_list_records_filters_success_records_with_offset_pagination() -> None:
+    repository, session = make_repository()
+    expected = [SourceRecord(source="fanza", source_key="cid-001", record_type="work")]
+    scalar_result = Mock()
+    scalar_result.all.return_value = expected
+    session.scalars.return_value = scalar_result
+
+    result = repository.list_records(" fanza ", " work ", limit=50, offset=10)
+
+    assert result == expected
+    statement = session.scalars.call_args.args[0]
+    compiled = statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+    assert "source_records.source = %(source_1)s" in sql
+    assert "source_records.record_type = %(record_type_1)s" in sql
+    assert "source_records.fetch_status = %(fetch_status_1)s" in sql
+    assert "ORDER BY javhub.source_records.fetched_at DESC, javhub.source_records.id DESC" in sql
+    assert "LIMIT %(param_1)s OFFSET %(param_2)s" in sql
+    assert compiled.params == {
+        "source_1": "fanza",
+        "record_type_1": "work",
+        "fetch_status_1": "success",
+        "param_1": 50,
+        "param_2": 10,
+    }
+    session.commit.assert_not_called()
+
+
+def test_list_records_can_disable_fetch_status_filter() -> None:
+    repository, session = make_repository()
+    scalar_result = Mock()
+    scalar_result.all.return_value = []
+    session.scalars.return_value = scalar_result
+
+    repository.list_records("fanza", "work", fetch_status=None)
+
+    statement = session.scalars.call_args.args[0]
+    compiled = statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+    assert "source_records.fetch_status =" not in sql
+    assert compiled.params == {
+        "source_1": "fanza",
+        "record_type_1": "work",
+        "param_1": 100,
+        "param_2": 0,
+    }
+
+
 def test_upsert_executes_postgresql_on_conflict_and_returns_scalar_one() -> None:
     repository, session = make_repository()
     expected = SourceRecord(source="fanza", source_key="cid-001", record_type="work")
@@ -167,7 +215,10 @@ def test_upsert_uses_explicit_fetched_at_when_provided() -> None:
     assert compiled.params["fetched_at"] == fetched_at
 
 
-@pytest.mark.parametrize("method_name", ["create", "get_by_source_key", "upsert"])
+@pytest.mark.parametrize(
+    "method_name",
+    ["create", "get_by_source_key", "upsert"],
+)
 @pytest.mark.parametrize("field_name", ["source", "source_key", "record_type"])
 @pytest.mark.parametrize("bad_value", [None, "", "   "])
 def test_required_unique_key_fields_are_validated(
@@ -185,6 +236,39 @@ def test_required_unique_key_fields_are_validated(
 
     with pytest.raises(ValueError, match=field_name):
         getattr(repository, method_name)(**kwargs)
+
+
+@pytest.mark.parametrize("field_name", ["source", "record_type"])
+@pytest.mark.parametrize("bad_value", [None, "", "   "])
+def test_list_records_required_fields_are_validated(
+    field_name: str,
+    bad_value: str | None,
+) -> None:
+    repository, _session = make_repository()
+    source: str | None = "fanza"
+    record_type: str | None = "work"
+    if field_name == "source":
+        source = bad_value
+    else:
+        record_type = bad_value
+
+    with pytest.raises(ValueError, match=field_name):
+        repository.list_records(source, record_type)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"limit": 0}, "limit"),
+        ({"limit": -1}, "limit"),
+        ({"offset": -1}, "offset"),
+    ],
+)
+def test_list_records_validates_limit_and_offset(kwargs: dict[str, int], match: str) -> None:
+    repository, _session = make_repository()
+
+    with pytest.raises(ValueError, match=match):
+        repository.list_records("fanza", "work", **kwargs)
 
 
 @pytest.mark.parametrize("method_name", ["create", "upsert"])

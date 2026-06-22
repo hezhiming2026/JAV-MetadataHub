@@ -23,6 +23,18 @@ def _clean_required_string(value: str | None, field_name: str) -> str:
     return cleaned
 
 
+def _validate_positive_int(value: int, field_name: str) -> int:
+    if isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{field_name} must be a positive integer")
+    return value
+
+
+def _validate_non_negative_int(value: int, field_name: str) -> int:
+    if isinstance(value, bool) or value < 0:
+        raise ValueError(f"{field_name} must be a non-negative integer")
+    return value
+
+
 class SourceRecordRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -89,6 +101,44 @@ class SourceRecordRepository:
             SourceRecord.record_type == cleaned_record_type,
         )
         return self.session.scalar(statement)
+
+    def list_records(
+        self,
+        source: str | None,
+        record_type: str | None,
+        *,
+        fetch_status: str | None = "success",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[SourceRecord]:
+        cleaned_source = _clean_required_string(source, "source")
+        cleaned_record_type = _clean_required_string(record_type, "record_type")
+        cleaned_limit = _validate_positive_int(limit, "limit")
+        cleaned_offset = _validate_non_negative_int(offset, "offset")
+
+        statement = select(SourceRecord).where(
+            SourceRecord.source == cleaned_source,
+            SourceRecord.record_type == cleaned_record_type,
+        )
+
+        if fetch_status is not None:
+            statement = statement.where(
+                SourceRecord.fetch_status
+                == _clean_required_string(
+                    fetch_status,
+                    "fetch_status",
+                )
+            )
+
+        statement = (
+            statement.order_by(
+                SourceRecord.fetched_at.desc(),
+                SourceRecord.id.desc(),
+            )
+            .limit(cleaned_limit)
+            .offset(cleaned_offset)
+        )
+        return list(self.session.scalars(statement).all())
 
     def upsert(
         self,
