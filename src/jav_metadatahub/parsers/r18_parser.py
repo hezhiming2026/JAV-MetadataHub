@@ -8,9 +8,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from jav_metadatahub.normalizers import normalize_code
-from jav_metadatahub.repositories.field_observations import ObservationValue
 
 type R18Row = dict[str, Any]
+type ObservationValue = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 _INTEGER_PATTERN = re.compile(r"^[+-]?\d+$")
 
