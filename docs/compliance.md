@@ -1,45 +1,23 @@
-# Compliance Policy
+# 合规政策
 
-This document defines the compliance boundary for JAV-MetadataHub. It is derived from `README.md`, `AGENTS.md`, `docs/architecture.md`, and `docs/research/2026-06-21-public-metadata-sources.md`.
+本文档定义 JAV-MetadataHub 的合规边界。它基于 `README.md`、`AGENTS.md`、`docs/architecture.md` 以及 `docs/research/2026-06-21-public-metadata-sources.md` 整理而成。
 
-The project handles public metadata only. It must not become a downloader, piracy index, access-control bypass tool, identity inference system, or private personal data collector.
+## 允许的数据
 
-## Allowed Data
+JAV-MetadataHub 可以采集和处理以下公开元数据：
 
-JAV-MetadataHub may collect and process public metadata such as:
+* 作品元数据：番号、标准化番号、标题、发行日期、时长、类型、外部 ID、公开外部 URL。
+* 公开人物元数据：女优、男优、导演、工作人员角色、公开艺名、公开别名、来源 ID。
+* 公司元数据：制作商、厂牌、发行商、工作室、分销商、来源 ID。
+* 系列元数据。
+* 标签元数据：类型、关键词、主题、来源标签名称。
+* 公开来源溯源信息：来源名称、来源 key、来源 URL、置信度、抓取/导入时间、来源记录 ID。
+* 在来源政策允许的情况下，原始公开 JSON、由 SQL dump 派生的行，以及未来经批准的公开 HTML 记录。
 
-- Work metadata: code, normalized code, title, release date, runtime, type, external IDs, public external URLs.
-- Public people metadata: actress, actor, director, staff role, public stage names, public aliases, source IDs.
-- Company metadata: maker, label, publisher, studio, distributor, source IDs.
-- Series metadata.
-- Tag metadata: genre, keyword, theme, source tag names.
-- Public source provenance: source name, source key, source URL, confidence, fetched/imported time, source record ID.
-- Raw public JSON, SQL-dump-derived rows, and future approved public HTML records when allowed by source policy.
 
-## Prohibited Data and Features
+## 必需的数据流
 
-Do not add, document as an implementation target, or assist with:
-
-- Video downloading.
-- Paid video downloading.
-- Torrent, magnet, BT, or ed2k collection.
-- Piracy resource indexing.
-- DRM bypass.
-- Paywall bypass.
-- Captcha bypass.
-- Cloudflare bypass.
-- Login bypass.
-- Account sharing.
-- Private personal data scraping.
-- Facial recognition.
-- Real identity inference.
-- Scraping of non-public personal information.
-- Private contact information, addresses, private social accounts, or real-life identity data.
-- Any workflow intended to obtain, distribute, or locate unauthorized media files.
-
-## Required Data Flow
-
-All external metadata must flow through the governed path:
+所有外部元数据必须经过受治理的数据路径：
 
 ```text
 external source
@@ -50,120 +28,98 @@ external source
     -> gold exports / read-only API
 ```
 
-Compliance rules:
+合规规则：
 
-- Raw source evidence must be saved before normalization.
-- Uncertain or conflicting fields must be saved as observations.
-- Supplemental sources must not directly overwrite canonical fields.
-- Every promoted field should preserve source, confidence, source record ID, and observed time.
-- Entity resolution must be conservative.
-- People must not be merged only by name.
+* 原始来源证据必须在标准化之前保存。
+* 不确定或存在冲突的字段必须保存为 observations。
+* 补充来源不得直接覆盖 canonical 字段。
+* 每个被提升的字段都应保留来源、置信度、来源记录 ID 和观测时间。
+* 实体解析必须保持保守。
+* 人物不得仅根据姓名进行合并。
 
-## Source Access Policy
+## 来源访问政策
 
-### V1 Sources
+### V1 来源
 
-V1 may use:
+V1 可以使用：
 
-- R18.dev dump as a structured dump source.
-- FANZA/DMM API as an official structured API source.
+* R18.dev dump，作为结构化 dump 来源。
+* FANZA/DMM API，作为官方结构化 API 来源。
 
-V1 must not use:
+V1 不得使用：
 
-- JavDB full crawler.
-- JavBus full crawler.
-- JavLibrary full crawler.
-- AVWikiDB full crawler.
-- Any third-party HTML full-site crawler.
+* JavDB 全量爬虫。
+* JavBus 全量爬虫。
+* JavLibrary 全量爬虫。
+* AVWikiDB 全量爬虫。
+* 任何第三方 HTML 全站爬虫。
 
-### V2/V3 Supplemental Sources
+### V2/V3 补充来源
 
-JavDB, JavBus, JavLibrary, and AVWikiDB may only be considered later as supplemental observation sources.
+JavDB、JavBus、JavLibrary 和 AVWikiDB 后续只能作为补充 observation 来源进行考虑。
 
-Future use must be limited to approved, narrow workflows:
+未来使用必须限制在经过批准的窄范围工作流中：
 
-- Exact-code lookup.
-- Manual or small-batch field supplement.
-- Observation-only ingestion.
-- Explicit review before any field promotion.
+* 精确番号查询。
+* 手动或小批量字段补充。
+* 仅作为 observation 导入。
+* 在任何字段提升之前进行明确审核。
 
-Future use must not include:
 
-- Full-site crawling.
-- Mirroring.
-- Anti-bot bypass.
-- Cloudflare bypass.
-- Captcha solving.
-- Login/session bypass.
-- Paid-content access.
-- DRM circumvention.
+## API 和 Dump 使用原则
 
-## API and Dump Usage Principles
+API client 和 dump importer 必须：
 
-API clients and dump importers must:
+* 遵守来源条款、robots 政策、已记录的速率限制和访问限制。
+* 使用保守的速率限制和重试策略。
+* 记录请求和失败，但不得记录密钥。
+* 将原始响应或导入记录保存到 `source_records`。
+* 保留溯源信息和置信度。
+* 可以通过 fixtures 和 mock responses 进行测试。
+* 避免在测试中发起真实网络请求。
 
-- Respect source terms, robots policies, documented rate limits, and access restrictions.
-- Use conservative rate limits and retry policies.
-- Log requests and failures without logging secrets.
-- Save raw responses or imported records to `source_records`.
-- Preserve provenance and confidence.
-- Be testable with fixtures and mocked responses.
-- Avoid real network calls in tests.
+密钥政策：
 
-Secrets policy:
+* 不得提交 `.env`。
+* 不得记录 API ID、affiliate ID、token、cookie 或凭证。
+* 不得在 fixtures 中包含真实凭证。
 
-- Do not commit `.env`.
-- Do not log API IDs, affiliate IDs, tokens, cookies, or credentials.
-- Do not include real credentials in fixtures.
+## 图片政策
 
-## Image Policy
+V1 存储图片 URL。
 
-V1 stores image URLs only.
+* 封面图片。
+* 样张图片。
+* 个人资料图片。
+* 预告片。
+* 任何其他媒体资源。
 
-Do not download:
+图片相关元数据可以作为 URL observation 存储，并包含来源、来源记录 ID、资源类型和观测时间。
 
-- Cover images.
-- Sample images.
-- Profile images.
-- Trailers.
-- Any other media assets.
+## 隐私政策
 
-Image-related metadata may be stored as URL observations with source, source record ID, asset type, and observed time.
+允许的人物数据仅限于公开演出元数据：
 
-## Privacy Policy
+* 公开艺名。
+* 公开别名。
+* 公开来源 ID。
+* 公开角色标签，例如女优、男优、导演或工作人员。
+* 真实身份推断。
+* 人脸匹配。
+* 人脸识别。
+* 私人姓名。
+* 私人地址。
+* 私人联系方式。
+* 私人社交账号。
+* 非公开个人信息。
 
-Allowed people data is limited to public performance metadata:
+## 测试和 Fixtures
 
-- Public stage names.
-- Public aliases.
-- Public source IDs.
-- Public role labels such as actress, actor, director, or staff.
+测试不得调用真实外部 API 或网站。
 
-Disallowed people data:
+可以使用：
 
-- Real identity inference.
-- Face matching.
-- Facial recognition.
-- Private names.
-- Private addresses.
-- Private contact information.
-- Private social accounts.
-- Non-public personal information.
-
-## Tests and Fixtures
-
-Tests must not call real external APIs or websites.
-
-Use:
-
-- Static fixtures.
-- Mocked HTTP responses.
-- Local sample dump rows.
-- Synthetic records.
-
-Do not use:
-
-- Real credentials.
-- Live API calls.
-- Browser automation against third-party adult sites.
-- Captcha, Cloudflare, login, or paywall bypass tools.
+* 静态 fixtures。
+* Mock HTTP responses。
+* 本地 sample dump rows。
+* 合成 records。
