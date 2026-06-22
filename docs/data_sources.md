@@ -1,17 +1,15 @@
-# Data Sources
+# 数据源说明
 
-This document summarizes the engineering source policy for JAV-MetadataHub. It is derived from `README.md`, `AGENTS.md`, `docs/architecture.md`, and `docs/research/2026-06-21-public-metadata-sources.md`.
+本文档汇总 JAV-MetadataHub 的工程数据源口径。它是面向实现的摘要文档，用来承接调研结论、来源优先级和证据链设计。
 
-It intentionally condenses the Deep Research report instead of copying it.
+## 来源策略
 
-## Source Strategy
+V1 使用两个结构化来源：
 
-V1 uses stable structured sources only:
+1. `R18.dev dump`：作为冷启动、历史回填和交叉校验数据集。
+2. `FANZA / DMM API`：作为官方结构化元数据入口。
 
-1. `R18.dev dump` as the seed and historical structured dataset.
-2. `FANZA / DMM API` as the official structured metadata source.
-
-V2/V3 may add supplemental observation sources:
+V2/V3 可以逐步增加补充观察来源：
 
 - Javinizer-Go
 - MetaTube
@@ -20,134 +18,105 @@ V2/V3 may add supplemental observation sources:
 - JavLibrary
 - AVWikiDB
 
-Supplemental sources must not directly overwrite canonical fields. They must write to `source_records` first and then to `field_observations`.
+补充来源的定位是提供缺失字段、冲突提示或人工校对线索。外部来源数据先进入 `source_records`，再由 parser 转换为 `field_observations`；canonical 字段通过明确的解析和提升逻辑更新。
 
-Third-party HTML sources must not be used as V1 full-site crawlers.
+## 版本路线
 
-## Version Boundaries
-
-| Stage | Sources | Purpose | Boundary |
+| 阶段 | 来源 | 目标 | 工程定位 |
 | --- | --- | --- | --- |
-| V1 | R18.dev dump, FANZA/DMM API | Establish Bronze/Silver/Gold flow and canonical model. | Structured sources only; no third-party HTML crawling. |
-| V2 | Javinizer-Go, MetaTube, JavDB, JavBus | Add controlled supplemental observations and compare provider outputs. | Observation-only; exact-code or adapter-based enrichment only. |
-| V3 | JavLibrary, AVWikiDB, additional governed sources | Long-tail supplement and manual review workflows. | Observation-only; no bypassing access control or full-site crawling. |
+| V1 | R18.dev dump, FANZA/DMM API | 建立 Bronze/Silver/Gold 数据流和 canonical 模型。 | 结构化来源主链路。 |
+| V2 | Javinizer-Go, MetaTube, JavDB, JavBus | 增加补充观察，并对比 provider 输出。 | 补充观察、适配器或对照实现。 |
+| V3 | JavLibrary, AVWikiDB, 其他来源 | 长尾补全、人工校对和分析增强。 | 补充观察和人工工作流。 |
 
-## Source Summary
+## 来源总览
 
-| Source | Field Coverage | Main Risks | Stage | Engineering Recommendation |
+| 来源 | 字段覆盖 | 主要注意点 | 阶段 | 工程建议 |
 | --- | --- | --- | --- | --- |
-| R18.dev dump | Code, titles, release date, runtime, actresses, directors, makers, categories/tags, image URLs. | Dump schema may change; online JSON API should not be treated as the main bulk interface; image licensing is separate from structured data. | V1 | Use dump import as repeatable seed/backfill. Store each imported record in `source_records`; write uncertain fields to `field_observations`. |
-| FANZA / DMM API | Code/product IDs, titles, release date, runtime, actresses, directors, maker, label, series, genres, image URLs. | Requires API credentials; affiliate/credit rules; regional availability; unknown rate limits. | V1 | Use as official structured API source with conservative rate limits, retries, logs, and mocked tests. |
-| Javinizer-Go | Aggregated provider fields such as title, cast, studio, series, tags, image URLs, and NFO-style mappings. | It is an aggregation/tooling layer, not a canonical upstream; may rely on sources with anti-crawl controls. | V2 | Use as reference implementation, compatibility baseline, or optional internal adapter. Do not treat as authoritative truth. |
-| MetaTube | Provider-federated metadata such as title, actors, director, studio, genres, and image URLs depending on provider. | Provider quality varies; not an authoritative source; depends on configured upstreams. | V2 | Use as federation/reference layer only. Preserve provider identity in observations. |
-| JavDB | Code, title, release date, runtime, actresses, director, maker/studio, series, tags, cover URLs, possible ratings. | No confirmed official dump/API; HTML/source stability and anti-crawl risk; Cloudflare/proxy-related ecosystem signals. | V2 | Supplemental observation source only. No V1 full crawler; no bypass; no canonical overwrite. |
-| JavBus | Code, title, release date, runtime, actresses, director, maker/studio, series, tags, cover URLs. | No confirmed official dump/API; page stability and ToS risk; proxy/site availability risk. | V2 | Supplemental observation source only. Exact-code enrichment only if later approved. |
-| JavLibrary | Code, title, actresses, director, maker, label, tags, rating/review-like fields. | High anti-crawl/session/Cloudflare risk; no public bulk interface; rating/review data is community-specific. | V3 | Long-tail/manual observation source only. No full-site crawler and no access-control bypass. |
-| AVWikiDB | Code/CID candidates, actor/director supplement, possibly person and work details. | Evidence is less complete and stability is uncertain; possible access-control changes. | V3 | Observation-only supplement for selected gaps; no canonical overwrite. |
+| R18.dev dump | 番号、标题、发行日期、时长、女优、导演、maker、分类/tag、图片 URL。 | dump schema 可能变化；在线 JSON 与 dump 需要分开建模；图片许可与结构化数据不同。 | V1 | 作为可重复导入的 seed/backfill。每条导入记录进入 `source_records`，不稳定字段进入 `field_observations`。 |
+| FANZA / DMM API | 番号/商品 ID、标题、发行日期、时长、女优、导演、maker、label、series、genre、图片 URL。 | 需要 API 配置；存在 credit、地域可用性和限流参数。 | V1 | 作为官方结构化 API 来源，客户端实现限流、重试、日志和 mocked tests。 |
+| Javinizer-Go | 聚合后的标题、演员、studio、series、tag、图片 URL、NFO 映射。 | 它是工具/聚合层，不是 canonical 上游。 | V2 | 可作为参考实现、兼容基线或可选内部 adapter。 |
+| MetaTube | 根据 provider 返回标题、演员、导演、studio、genre、图片 URL 等。 | provider 质量不一，不是单一权威来源。 | V2 | 作为 federation/reference layer，保留 provider identity。 |
+| JavDB | 番号、标题、发行日期、时长、女优、导演、maker/studio、series、tag、封面 URL、评分类信号。 | 未确认官方 dump/API；页面结构和可用性需要按版本确认。 | V2 | 作为补充观察来源。 |
+| JavBus | 番号、标题、发行日期、时长、女优、导演、maker/studio、series、tag、封面 URL。 | 未确认官方 dump/API；页面稳定性和可用性需要按版本确认。 | V2 | 作为补充观察来源。 |
+| JavLibrary | 番号、标题、女优、导演、maker、label、tag、评分/评论类字段。 | 社区评分和评论属于来源特定信号。 | V3 | 适合长尾补充、tag 与社区指标观察。 |
+| AVWikiDB | 番号/CID 候选、演员/导演补充、作品与人物细节。 | 公开证据完整度和稳定性需要持续校验。 | V3 | 作为 selected gap filling 和人工校对来源。 |
 
-## Canonical Source Priority
+## Canonical 来源优先级
 
-Default field promotion priority:
+默认字段提升优先级：
 
 ```text
 FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 ```
 
-Supplemental observations include JavDB, JavBus, JavLibrary, AVWikiDB, MetaTube, and Javinizer-Go output. They may help detect conflicts or missing values but cannot directly write canonical fields.
+补充观察包括 JavDB、JavBus、JavLibrary、AVWikiDB、MetaTube、Javinizer-Go 输出。它们用于发现缺失值和冲突值，canonical 更新需要经过明确的字段级规则。
 
-Field-level notes:
+字段级说明：
 
-- `title_ja`: FANZA/DMM preferred when available.
-- `title_en`: R18.dev preferred when available.
-- `title_zh`: observation-only until a governed translation policy exists.
-- `runtime_minutes`: FANZA/DMM preferred; R18.dev can cross-check.
-- `actress`: FANZA/DMM preferred; R18.dev can supplement.
-- `actor`: observation-only in V1 because coverage varies.
-- `director`: FANZA/DMM preferred; R18.dev can supplement.
-- `maker`, `label`, `series`: FANZA/DMM preferred when available.
-- `tags`: preserve source tags first; canonical tag mapping is a later governance task.
-- ratings, comments, review counts, community heat, and ranking signals: observation-only.
+- `title_ja`：优先使用 FANZA/DMM。
+- `title_en`：R18.dev 有值时优先作为英文标题候选。
+- `title_zh`：在翻译策略确定前保持 observation-first。
+- `runtime_minutes`：FANZA/DMM 优先，R18.dev 用于交叉校验。
+- `actress`：FANZA/DMM 优先，R18.dev 可补充。
+- `actor`：V1 覆盖不稳定，优先保留观察值。
+- `director`：FANZA/DMM 优先，R18.dev 可补充。
+- `maker`、`label`、`series`：FANZA/DMM 有值时优先。
+- `tags`：先保留 source tags；canonical tag taxonomy 是后续治理任务。
+- ratings、comments、review counts、community heat、ranking signals：作为 observation 或 metric snapshots。
 
-## V1 Structured Sources
+## V1 结构化来源
 
 ### R18.dev Dump
 
-Role:
+角色：
 
-- Cold-start seed.
-- Historical backfill.
-- Cross-source validation.
-- English-title and legacy-data supplement where present.
+- 冷启动 seed。
+- 历史回填。
+- 跨来源校验。
+- 英文标题和 legacy data 补充。
 
-Engineering policy:
+工程流程：
 
-- Prefer dump import over online JSON calls for bulk data.
-- Store imported work/person/company/series/tag records as `source_records`.
-- Preserve dump version, observed time, checksum when available, and importer version.
-- Convert source-specific fields into `field_observations` before promotion.
+- bulk 主路径优先使用 dump import。
+- 导入的 work/person/company/series/tag 记录先序列化到 `source_records`。
+- 保留 dump version、observed time、checksum 和 importer version。
+- source-specific 字段先进入 `field_observations`，再由 ingestion 规则决定是否提升。
 
 ### FANZA / DMM API
 
-Role:
+角色：
 
-- Official structured metadata source.
-- Incremental refresh source.
-- High-confidence candidate for work identity and core relationships.
+- 官方结构化元数据来源。
+- 增量刷新来源。
+- 作品身份和核心关系的高置信候选来源。
 
-Engineering policy:
+工程流程：
 
-- Use async `httpx`, retries, rate limiting, structured logging, and tests with mocked responses.
-- Never call real external APIs in tests.
-- Never log API credentials or affiliate IDs as secrets.
-- Store every raw response page or detail response in `source_records`.
-- Use parser/ingestion flow to create observations and canonical candidates.
+- 使用 async `httpx`、重试、限流、结构化日志，以及 mocked response 测试。
+- 测试使用 fixtures 或 mocked HTTP。
+- 日志保留请求和错误上下文，并对凭证类字段做脱敏。
+- 每个原始响应页或 detail response 存入 `source_records`。
+- parser/ingestion flow 负责创建 observations 和 canonical candidates。
 
-## V2/V3 Supplemental Sources
+## V2/V3 补充来源
 
-Supplemental sources exist to improve coverage and identify conflicts. They are not canonical sources.
-
-Allowed future pattern:
+补充来源用于提升覆盖面和识别多源冲突。推荐流程：
 
 ```text
-exact code or approved adapter input
+source input
     -> source_records
     -> parser/provider module
     -> field_observations
     -> candidate review / explicit promotion rule
 ```
 
-Disallowed pattern:
+`source_records` 与 `field_observations` 是所有外部来源进入系统的证据层。canonical 字段的更新应能回溯到具体来源记录和字段观察。
 
-```text
-third-party HTML source
-    -> direct canonical update
-```
+## 图片字段
 
-## Third-Party HTML Policy
+V1 将图片、样张、预告片和人物头像作为 URL 型 metadata 保存。
 
-JavDB, JavBus, JavLibrary, and AVWikiDB must not be V1 full crawler sources.
-
-Future use must follow all of these constraints:
-
-- Exact-code lookup or small, targeted supplement only.
-- No full-site mirroring.
-- No Cloudflare bypass.
-- No captcha bypass.
-- No login bypass.
-- No paid-content bypass.
-- No DRM bypass.
-- No proxy or solver integration whose purpose is to bypass access controls.
-- No private personal information collection.
-- No facial recognition.
-- No real identity inference.
-- All data goes through `source_records` and `field_observations`.
-- No direct canonical overwrite.
-
-## Image Policy
-
-V1 stores image URLs only. It must not download covers, sample images, trailers, or profile images.
-
-Image URL observations should preserve:
+图片 URL observation 建议保留：
 
 - source
 - source record ID
@@ -156,6 +125,6 @@ Image URL observations should preserve:
 - source URL
 - license/copyright note when known
 
-## Testing Policy
+## 测试说明
 
-All source clients and importers must be tested with fixtures and mocked responses. Tests must not call real external APIs or websites.
+来源 client、importer 和 parser 使用 fixtures 与 mocked responses 覆盖。测试重点包括分页、重试、字段映射、source record 写入、observation 写入和日志脱敏。

@@ -1,24 +1,22 @@
-# FANZA / DMM API Source Spec
+# FANZA / DMM API 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/architecture.md`, `docs/schema.md`, and `docs/compliance.md`.
+本文档说明 FANZA / DMM API 在 JAV-MetadataHub 中的 V1 接入方式。它是官方结构化元数据来源，需要配置凭证、限流、重试、日志、fixtures 和 mocked tests。
 
-FANZA / DMM API is a V1 structured source for official public metadata. It must be handled as an API source with credentials, rate limits, retries, logging, fixtures, and mocked tests.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `fanza` |
-| Stage | V1 structured API source |
-| Source type | Official / affiliate API |
-| Primary use | Official metadata, incremental refresh, canonical candidates |
-| Canonical authority | Highest default priority for Japanese work metadata and core relationships |
-| Bulk access | API pagination with date windows |
-| Tests | Mocked HTTP only |
+| source name | `fanza` |
+| 阶段 | V1 structured API source |
+| 来源类型 | official / affiliate API |
+| 主要用途 | 官方元数据、增量刷新、canonical candidates |
+| canonical 优先级 | 日文作品元数据和核心关系的默认最高优先级 |
+| bulk access | API pagination with date windows |
+| tests | mocked HTTP |
 
-## Configuration
+## 配置
 
-Expected settings:
+预期 settings：
 
 - `FANZA_BASE_URL`
 - `FANZA_API_ID`
@@ -27,17 +25,17 @@ Expected settings:
 - retry count
 - default rate limit
 
-The architecture draft uses this default base URL:
+架构草案使用的默认 base URL：
 
 ```text
 https://api.dmm.com/affiliate/v3
 ```
 
-Credentials must come from settings or environment variables. They must not be committed or logged.
+凭证从 settings 或 environment variables 读取。日志和 fixtures 使用脱敏值。
 
-## API Methods
+## API 方法
 
-The V1 client should expose:
+V1 client 暴露：
 
 - `floor_list`
 - `item_list`
@@ -46,34 +44,34 @@ The V1 client should expose:
 - `genre_search`
 - `series_search`
 
-`author_search` may be added later if a concrete metadata need appears.
+`author_search` 可在出现明确 metadata 需求后加入。
 
-All requests should include:
+请求参数包含：
 
 - `api_id`
 - `affiliate_id`
 - `output=json`
 
-## ItemList Parameters
+## ItemList 参数
 
-Supported V1 parameters:
+V1 支持参数：
 
 | Parameter | Purpose |
 | --- | --- |
-| `site` | Adult/general site selector; default should support FANZA. |
-| `service` | Service/floor filter discovered from FloorList where possible. |
-| `floor` | Floor filter discovered from FloorList where possible. |
-| `keyword` | Optional search term. |
-| `cid` | Exact content ID lookup. |
-| `sort` | Default `date` for collection. |
-| `hits` | Page size; use a safe default and respect documented/source-researched limits. |
-| `offset` | Pagination offset. |
-| `gte_date` | Date-window start. |
-| `lte_date` | Date-window end. |
+| `site` | Adult/general site selector；默认支持 FANZA。 |
+| `service` | 尽量来自 FloorList discovery。 |
+| `floor` | 尽量来自 FloorList discovery。 |
+| `keyword` | Optional search term。 |
+| `cid` | Exact content ID lookup。 |
+| `sort` | 默认 `date`。 |
+| `hits` | Page size；使用安全默认值并尊重调研记录的限制。 |
+| `offset` | Pagination offset。 |
+| `gte_date` | Date-window start。 |
+| `lte_date` | Date-window end。 |
 
-## Collection Strategy
+## 采集策略
 
-Recommended V1 strategy:
+推荐 V1 流程：
 
 ```text
 FloorList discovery
@@ -84,20 +82,20 @@ FloorList discovery
     -> canonical promotion through ingestion rules
 ```
 
-Use date windows instead of unbounded deep pagination. If a date window is too large, split it into smaller windows.
+使用 date windows 管理分页范围。如果一个窗口结果过大，将窗口切分为更小粒度。
 
-## Source Keys
+## Source Key 规则
 
-| API Field | Target | Notes |
+| API Field | Target | 说明 |
 | --- | --- | --- |
-| `content_id` | `source_records.source_key`, `work_external_ids` | Preferred FANZA source key. |
-| `product_id` | `work_external_ids` | Preserve separately. |
-| `maker_product` or equivalent product code | `work_external_ids`, `works.code_original` candidate | Most useful human-readable code when present. |
-| source URL / affiliate URL | `source_records.source_url`, `work_external_ids.external_url` | Preserve public source/provenance URL. |
+| `content_id` | `source_records.source_key`, `work_external_ids` | FANZA source key 首选。 |
+| `product_id` | `work_external_ids` | 单独保留。 |
+| `maker_product` or equivalent product code | `work_external_ids`, `works.code_original` candidate | 最适合面向用户展示的番号候选。 |
+| source URL / affiliate URL | `source_records.source_url`, `work_external_ids.external_url` | 保留 public source/provenance URL。 |
 
-If response pages contain multiple items, the implementation may either store page-level `search_result` records and item-level `work` records, or store page-level records first and derive item-level source records during parsing. The chosen policy must be deterministic and tested.
+当 response page 包含多个 items 时，可以存 page-level `search_result` records 和 item-level `work` records，也可以先存 page-level records 再在解析阶段派生 item-level source records。选定策略需要 deterministic 并有测试覆盖。
 
-## Field Mapping
+## 字段映射
 
 | FANZA/DMM Field / Concept | Target | Canonical Candidate | Observation Required |
 | --- | --- | --- | --- |
@@ -112,26 +110,24 @@ If response pages contain multiple items, the implementation may either store pa
 | maker | `companies`, `work_companies` | yes | yes |
 | label | `companies`, `work_companies` | yes | yes |
 | series | `series`, `work_series` | yes | yes |
-| genre / keywords | `tags`, `work_tags` | source tag only in V1 | yes |
+| genre / keywords | `tags`, `work_tags` | source tag in V1 | yes |
 | image URLs | `media_assets.url` | URL-only candidate | yes |
 | review count / rating average | `field_observations` | no | yes |
-| sample movie URL | `field_observations` only if retained | no | yes |
+| sample movie URL | `field_observations` if retained | no | yes |
 
-## Canonical Promotion Rules
+## Canonical 提升规则
 
-Default priority:
+默认优先级：
 
 ```text
 FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 ```
 
-FANZA/DMM may populate canonical work fields when confidence is high and parsing is deterministic.
+FANZA/DMM 可在解析稳定且置信度足够时填充 canonical work fields。即使字段被提升为 canonical，也保留对应 observations，便于回溯和冲突分析。
 
-FANZA/DMM must still write observations. Canonical fields are current best values, not a replacement for evidence.
+## 限流与重试
 
-## Rate Limit and Retry Policy
-
-The client must include:
+client 包含：
 
 - conservative default rate limit
 - timeout
@@ -140,11 +136,11 @@ The client must include:
 - structured logs
 - secret redaction
 
-If repeated failures occur, the collector should mark the `collector_runs` row as failed or partial and stop safely.
+重复失败时，collector 将 `collector_runs` 标记为 failed 或 partial，并记录可安全展示的失败上下文。
 
-## Failure Handling
+## 失败上下文
 
-Save failure context without secrets:
+保存失败上下文时使用脱敏参数：
 
 - source
 - endpoint
@@ -154,28 +150,17 @@ Save failure context without secrets:
 - retry count
 - timestamp
 
-Do not log `api_id`, `affiliate_id`, cookies, tokens, or credentials.
+`api_id`、`affiliate_id`、cookies、tokens、credentials 在日志和测试 fixtures 中使用 masked value。
 
-## Tests
+## 测试
 
-Tests must use mocked HTTP responses and local fixtures.
+测试使用 mocked HTTP responses 和本地 fixtures。
 
-Required scenarios:
+必测场景：
 
 - auth/query parameters are attached
 - pagination uses expected `hits` and `offset`
 - date-window parameters are passed
 - retry occurs on configured transient failures
-- secrets are not logged
-- no real external network call is made
-
-## Prohibited
-
-- Do not call real FANZA/DMM API in tests.
-- Do not log credentials.
-- Do not download images, sample movies, trailers, or videos.
-- Do not collect torrent, magnet, BT, or ed2k data.
-- Do not bypass paid content, login, captcha, Cloudflare, DRM, or other access controls.
-- Do not collect private personal information.
-- Do not add facial recognition.
-- Do not infer real identities.
+- secrets are redacted in logs
+- network calls are intercepted by mocks

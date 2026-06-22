@@ -1,23 +1,21 @@
-# JavLibrary Source Spec
+# JavLibrary 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/data_sources.md`, and `docs/compliance.md`.
+本文档说明 JavLibrary 在 JAV-MetadataHub 中的补充观察定位。JavLibrary 不是 V1 主来源，后续可作为 V3 或 late V2 人工校对工作流的一部分评估。
 
-JavLibrary is not a V1 source. It may only be considered in V3, or a late V2 manual workflow, as a supplemental observation source.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `javlibrary` |
-| Stage | V3 candidate; late V2 only if explicitly approved |
-| Source type | Community/page-style metadata source |
-| Primary use | Long-tail supplement, tags, rating/review-like observations |
-| Canonical authority | None by default |
-| Bulk crawling | Not allowed |
+| source name | `javlibrary` |
+| 阶段 | V3 candidate；late V2 可在明确需求后评估 |
+| 来源类型 | community/page-style metadata source |
+| 主要用途 | 长尾补充、tags、rating/review-like observations |
+| canonical authority | 默认无 |
+| 采集形态 | 补充观察或人工校对工作流 |
 
-## Possible Observation Fields
+## 可能观察字段
 
-Future work may observe:
+后续工作可观察：
 
 - code/title variants
 - public actress names
@@ -27,32 +25,25 @@ Future work may observe:
 - series when visible
 - tags/community categories
 - rating-like values
-- review/comment metadata when allowed and public
+- review/comment metadata when available
 
-These fields are observation-only until explicit resolution rules exist.
+这些字段先作为 observations 保存，后续由 explicit resolution rules 处理。
 
-## Required Policy
+## 推荐数据流
 
-JavLibrary may only be considered for:
+```text
+source input
+    -> source_records
+    -> parser/provider
+    -> field_observations
+    -> candidate review
+```
 
-- exact-code lookup
-- manual review
-- small controlled supplement
-- observation-only ingestion
+JavLibrary 适合提供长尾作品、社区标签和评分评论类信号。它们属于来源特定信息，推荐进入 observations 或未来的 metric snapshots。
 
-It must not directly update canonical fields.
+## 评分与评论说明
 
-## Risk Notes
-
-The research document flags JavLibrary as high risk because surrounding public tooling reports session, cookie, anti-bot, and Cloudflare-related constraints.
-
-This project must not implement bypass tactics. If public access requires a challenge, login, paid access, or human session, automated collection must stop.
-
-## Rating and Review Caveats
-
-Ratings, reviews, comment counts, and community sentiment are not canonical work facts.
-
-They must be stored as observations or future metric snapshots with:
+Ratings、reviews、comment counts、community sentiment 不是作品事实本身。建议保存为：
 
 - source
 - observed time
@@ -60,25 +51,12 @@ They must be stored as observations or future metric snapshots with:
 - confidence
 - raw value
 
-They must not overwrite canonical work fields.
+如需用于排序或分析，可在 metric snapshots 或 Gold 层中派生。
 
-## Tests
+## 来源说明
 
-If implemented later, tests must use local fixtures and mocked responses only.
+调研文档记录 JavLibrary 的页面访问形态和社区工具实现差异。实现前应先更新样本、字段映射和测试 fixtures。
 
-## Prohibited
+## 测试
 
-- No V1 implementation.
-- No full-site crawling.
-- No Cloudflare bypass.
-- No captcha bypass.
-- No login/session bypass.
-- No paid-content bypass.
-- No DRM bypass.
-- No canonical overwrite.
-- No video downloading.
-- No torrent, magnet, BT, or ed2k collection.
-- No piracy resource indexing.
-- No private personal information collection.
-- No facial recognition.
-- No real identity inference.
+如果后续实现，测试使用本地 fixtures 和 mocked responses，覆盖字段解析、observation 写入、rating/review 保存和冲突保留。

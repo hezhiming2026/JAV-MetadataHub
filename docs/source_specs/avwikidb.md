@@ -1,23 +1,21 @@
-# AVWikiDB Source Spec
+# AVWikiDB 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/data_sources.md`, and `docs/compliance.md`.
+本文档说明 AVWikiDB 在 JAV-MetadataHub 中的补充观察定位。AVWikiDB 不是 V1 主来源，后续可作为 V3 补充观察来源评估。
 
-AVWikiDB is not a V1 source. It may only be considered in V3 as a supplemental observation source.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `avwikidb` |
-| Stage | V3 candidate |
-| Source type | Community/wiki-style metadata source |
-| Primary use | Actor/director/CID supplement and selected gap filling |
-| Canonical authority | None by default |
-| Bulk crawling | Not allowed |
+| source name | `avwikidb` |
+| 阶段 | V3 candidate |
+| 来源类型 | community/wiki-style metadata source |
+| 主要用途 | actor/director/CID supplement 和 selected gap filling |
+| canonical authority | 默认无 |
+| 采集形态 | 补充观察或人工校对工作流 |
 
-## Possible Observation Fields
+## 可能观察字段
 
-Future V3 work may observe:
+后续 V3 工作可观察：
 
 - code or CID candidates
 - title variants
@@ -27,47 +25,24 @@ Future V3 work may observe:
 - series or tag hints when visible
 - source URL
 
-All values must be written to `source_records` and `field_observations`.
+观察到的字段进入 `source_records` 和 `field_observations`，再由 ingestion 规则决定后续处理。
 
-## Required Policy
+## 推荐数据流
 
-AVWikiDB may only be considered for:
+```text
+source input
+    -> source_records
+    -> parser/provider
+    -> field_observations
+    -> candidate review
+```
 
-- exact-code lookup
-- selected missing-field supplement
-- manual review workflows
-- observation-only ingestion
+AVWikiDB 字段默认作为不确定补充观察。actor/director/CID 观察值可用于候选匹配和人工校对。
 
-It must not:
+## 来源说明
 
-- run in V1
-- run as a full-site crawler
-- directly overwrite canonical fields
-- bypass access controls
+调研文档记录 AVWikiDB 覆盖范围与稳定性证据存在差异。实现前应先确认样本、字段语义和 parser fixture。
 
-## Risk Notes
+## 测试
 
-The research document reports mixed evidence about AVWikiDB coverage and stability. Treat all AVWikiDB fields as uncertain until reviewed.
-
-Actor/director/CID observations may be useful, but they must remain observations unless an explicit resolver promotes them.
-
-## Tests
-
-If implemented later, tests must use local fixtures and mocked responses only.
-
-## Prohibited
-
-- No V1 implementation.
-- No full crawler.
-- No canonical overwrite.
-- No Cloudflare bypass.
-- No captcha bypass.
-- No login bypass.
-- No paid-content bypass.
-- No DRM bypass.
-- No video downloading.
-- No torrent, magnet, BT, or ed2k collection.
-- No piracy resource indexing.
-- No private personal information collection.
-- No facial recognition.
-- No real identity inference.
+如果后续实现，测试使用本地 fixtures 和 mocked responses，覆盖字段解析、source record 写入、observation 写入和候选匹配。

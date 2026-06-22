@@ -1,64 +1,53 @@
 # JAV-MetadataHub
 
-JAV-MetadataHub is a public metadata foundation for Japanese adult video metadata analytics.
+JAV-MetadataHub 是一个面向日本成人成人视频元数据分析的公开元数据底座。
 
-The project collects, normalizes, governs, and exports public metadata about works, public performer/staff names, companies, series, tags, external IDs, source records, and field observations.
+项目采集、标准化、治理并导出作品、公开演职员名称、公司、系列、标签、external IDs、source records 和 field observations 等元数据。它的核心目标是为下游数据分析、只读 API、CSV / Parquet / DuckDB 导出提供可追溯的数据基础。
 
-This project is designed for downstream data analysis, not for media downloading or piracy.
+## 范围
 
-## Scope
+V1 聚焦公开元数据建模、source records、field observations、canonical entities、导出和只读 API。
 
-This project handles public metadata only.
+处理的数据包括：
 
-Allowed data:
+* 作品元数据：番号、标题、发行日期、时长、类型、external IDs、external URLs。
+* 公开人物元数据：女优、男优、导演、公开艺名、别名、source IDs。
+* 公司元数据：maker、label、publisher、studio。
+* 系列元数据。
+* 标签元数据：genre、keyword、theme。
+* 来源追溯信息：source、source key、source URL、confidence、fetched/imported time。
+* 来源证据：raw JSON、由 SQL dump 派生的 row、后续来源样本。
 
-* Work metadata: code, title, release date, runtime, type, external IDs, external URLs
-* Public people metadata: actress, actor, director, public stage names, aliases, source IDs
-* Company metadata: maker, label, publisher, studio
-* Series metadata
-* Tag metadata: genre, keyword, theme
-* Source provenance: source, confidence, fetched time, raw JSON/HTML
+媒体字段在 V1 作为 URL metadata 保存。版权、访问策略、地域可用性等问题在来源规格和产品发布阶段单独评估。
 
-This project does not support:
-
-* video downloading
-* torrent, magnet, BT, or ed2k links
-* piracy resource indexing
-* DRM bypassing
-* paywall bypassing
-* captcha bypassing
-* account sharing
-* private personal information collection
-* facial recognition or real identity inference
-
-## Architecture
+## 架构
 
 ```text
-Public metadata sources
+external metadata sources
     ↓
-Collectors / Importers
+collectors / importers
     ↓
 source_records
     ↓
-Parsers
+parsers
     ↓
 field_observations
     ↓
-Silver canonical entities
+silver canonical entities
     ↓
-Gold analytics exports
+gold analytics exports
     ↓
 CSV / Parquet / DuckDB / REST API
 ```
 
-## Data Source Strategy
+## 数据源策略
 
-V1 focuses on stable structured sources:
+V1 使用稳定结构化来源：
 
-1. R18.dev dump as seed / historical dataset
-2. FANZA / DMM API as official metadata source
+1. R18.dev dump：作为 seed、historical dataset 和 backfill 来源。
+2. FANZA / DMM API：作为官方结构化 metadata 来源。
 
-Later versions may add supplemental observation sources:
+后续版本可以增加补充观察来源：
 
 * Javinizer-Go
 * MetaTube
@@ -67,9 +56,15 @@ Later versions may add supplemental observation sources:
 * JavLibrary
 * AVWikiDB
 
-Supplemental sources should not directly overwrite canonical fields. They should first enter `source_records` and `field_observations`.
+补充来源用于缺失字段、冲突提示或人工校对线索。外部来源数据先进入 `source_records`，再由 parser 转换为 `field_observations`；canonical 字段通过明确的解析和提升逻辑更新。
 
-## Core Tables
+默认字段提升优先级：
+
+```text
+FANZA/DMM API > R18.dev dump > supplemental observations > unknown
+```
+
+## 核心表
 
 * `collector_runs`
 * `source_records`
@@ -92,7 +87,7 @@ Supplemental sources should not directly overwrite canonical fields. They should
 * `entity_merge_logs`
 * `media_assets`
 
-## Recommended Tech Stack
+## 技术栈
 
 * Python 3.12+
 * PostgreSQL 15+
@@ -109,54 +104,54 @@ Supplemental sources should not directly overwrite canonical fields. They should
 * mypy
 * DuckDB / Parquet
 
-## Quick Start
+## 快速开始
 
-### 1. Create virtual environment
+### 1. 创建虚拟环境
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Install dependencies
+### 2. 安装依赖
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-### 3. Configure environment
+### 3. 配置环境
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`.
+编辑 `.env`。
 
-### 4. Start PostgreSQL
+### 4. 启动 PostgreSQL
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 5. Run migrations
+### 5. 运行 migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### 6. Run tests
+### 6. 运行测试
 
 ```bash
 pytest
 ```
 
-### 7. Run API
+### 7. 启动 API
 
 ```bash
 uvicorn jav_metadatahub.api.main:app --reload
 ```
 
-## Development Commands
+## 开发命令
 
 ```bash
 ruff check .
@@ -165,12 +160,11 @@ mypy src
 pytest
 ```
 
-## Documentation
+## 文档
 
 * `docs/architecture.md`
 * `docs/schema.md`
 * `docs/data_sources.md`
-* `docs/compliance.md`
 * `docs/codex_tasks.md`
 * `docs/source_specs/r18_dump.md`
 * `docs/source_specs/fanza_dmm_api.md`
@@ -179,8 +173,9 @@ pytest
 * `docs/source_specs/javlibrary.md`
 * `docs/source_specs/avwikidb.md`
 
-## Compliance
+## 数据治理原则
 
-This repository must not implement video downloaders, torrent/magnet indexing, piracy features, DRM bypass, paywall bypass, captcha bypass, or private personal information scraping.
-
-All uncertain metadata must remain in `field_observations` until promoted by explicit rules.
+* 原始来源证据在标准化前保存到 `source_records`。
+* 不确定、冲突或来源特定字段保存到 `field_observations`。
+* canonical 字段代表当前最佳值；更新 canonical 前保留对应 observation。
+* 每个提升后的 canonical 值应能回溯到 source record 和 field observation。

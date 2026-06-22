@@ -1,23 +1,21 @@
-# JavBus Source Spec
+# JavBus 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/data_sources.md`, and `docs/compliance.md`.
+本文档说明 JavBus 在 JAV-MetadataHub 中的补充观察定位。JavBus 不是 V1 主来源，后续可作为 V2 补充观察来源评估。
 
-JavBus is not a V1 source. It may only be considered in V2 as a supplemental observation source.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `javbus` |
-| Stage | V2 candidate |
-| Source type | Community/page-style metadata source |
-| Primary use | Missing-field supplement and cross-source comparison |
-| Canonical authority | None by default |
-| Bulk crawling | Not allowed |
+| source name | `javbus` |
+| 阶段 | V2 candidate |
+| 来源类型 | community/page-style metadata source |
+| 主要用途 | 缺失字段补充、跨来源对比 |
+| canonical authority | 默认无 |
+| 采集形态 | 后续按具体实现方案评估 |
 
-## Possible Observation Fields
+## 可能观察字段
 
-Future V2 work may observe:
+后续 V2 工作可观察：
 
 - code/title variants
 - release date
@@ -29,39 +27,24 @@ Future V2 work may observe:
 - tags
 - cover URL
 
-All observed fields must be written to `source_records` and `field_observations`.
+观察到的字段进入 `source_records` 和 `field_observations`，再由 ingestion 规则决定后续处理。
 
-## Required Policy
+## 推荐数据流
 
-JavBus may only be considered later for exact-code or narrowly scoped enrichment.
+```text
+source input
+    -> source_records
+    -> parser/provider
+    -> field_observations
+    -> candidate review
+```
 
-It must not:
+JavBus 适合作为补充字段和交叉校验来源。canonical 更新通过明确的字段级解析规则完成。
 
-- run as a V1 full source
-- crawl the whole site
-- mirror pages
-- directly update canonical fields
-- bypass site restrictions
+## 来源说明
 
-## Risk Notes
+调研文档将 JavBus 视为没有 confirmed official dump/changefeed 的补充来源。实现前应先固化目标页面样本、字段选择和测试 fixtures。
 
-The research document treats JavBus as a supplemental source with no confirmed official dump/changefeed and with site-stability and ToS risk.
+## 测试
 
-All uncertain fields remain observations until explicit promotion rules exist.
-
-## Tests
-
-If implemented later, tests must use local fixtures and mocked responses only.
-
-## Prohibited
-
-- No V1 implementation.
-- No full crawler.
-- No canonical overwrite.
-- No video downloading.
-- No torrent, magnet, BT, or ed2k collection.
-- No piracy resource indexing.
-- No Cloudflare, captcha, login, paid-content, or DRM bypass.
-- No private personal information collection.
-- No facial recognition.
-- No real identity inference.
+如果后续实现，测试使用本地 fixtures 和 mocked responses，覆盖字段解析、source record 写入、observation 写入和幂等行为。

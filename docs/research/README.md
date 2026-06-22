@@ -1,10 +1,11 @@
-# Research Archive
+# 调研归档
 
-Place raw Deep Research reports here.
+这里保存 Deep Research 原始报告和证据整理。
 
-Raw research reports are evidence archives. Codex should normally read the summarized engineering docs first:
-- docs/data_sources.md
-- docs/source_specs/*.md
-- docs/compliance.md
+原始调研报告是证据归档。Codex 通常应先阅读工程摘要文档：
 
-Only read raw research reports when checking evidence or resolving uncertainty.
+- `docs/data_sources.md`
+- `docs/source_specs/*.md`
+- `docs/schema.md`
+
+只有在检查证据来源或解决不确定问题时，再阅读原始调研报告。

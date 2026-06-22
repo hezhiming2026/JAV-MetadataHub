@@ -1,4 +1,4 @@
-# JAV-MetadataHub Architecture
+# JAV-MetadataHub 架构
 
 > TODO: Paste or generate the full architecture specification here.
 
@@ -26,16 +26,16 @@ This document should describe:
 文档版本：v1.0
 目标状态：MVP 可落地
 核心原则：公开元数据采集、字段血缘、实体治理、可分析、可增量
-不包含：视频下载、磁力链接、盗版资源、破解资源、付费绕过、隐私信息采集
+范围外：视频下载、磁力链接、盗版资源、破解资源、付费内容处理、非公开个人数据采集
 ```
 
 ---
 
-# 1. 项目定位与边界
+# 1. 项目定位与范围
 
 ## 1.1 项目定位
 
-JAV-MetadataHub 是一个面向数据分析的日本 AV 公开元数据底座。它不是下载工具、媒体库整理工具、番号站镜像，也不是单站爬虫。
+JAV-MetadataHub 是一个面向数据分析的日本 AV 公开元数据底座。它的核心是多源 metadata 采集、证据留存、实体治理和分析导出。
 
 项目核心目标是：
 
@@ -53,9 +53,9 @@ JAV-MetadataHub 是一个面向数据分析的日本 AV 公开元数据底座。
 对外提供 SQL / Parquet / REST API
 ```
 
-## 1.2 业务边界
+## 1.2 业务范围
 
-允许处理的数据：
+处理的数据：
 
 ```text
 - 作品公开元数据：番号、标题、发行日期、时长、类型、外部 ID、外部 URL
@@ -64,25 +64,16 @@ JAV-MetadataHub 是一个面向数据分析的日本 AV 公开元数据底座。
 - 系列公开信息：series
 - 标签公开信息：genre、keyword、theme
 - 字段来源：source、source_key、source_url、confidence、fetched_at
-- 原始公开 JSON / HTML
+- 原始公开 JSON / HTML 或 dump row
 ```
 
-禁止处理的数据：
+范围说明：
 
 ```text
-- 视频文件下载
-- 付费视频下载
-- 磁力链接
-- ed2k 链接
-- BT 种子
-- 盗版资源索引
-- DRM 绕过
-- 登录绕过
-- 验证码绕过
-- 付费墙绕过
-- 演员真实身份、住址、私人社媒、私人联系方式
-- 非公开个人信息
-- 未成年人或疑似非法内容的扩散、索引和推荐
+- 以公开元数据和来源证据为中心
+- 媒体字段在 V1 保存 URL metadata
+- 人物信息以公开艺名和公开演职员信息为主
+- 版权、访问策略、地域可用性等问题在来源规格和产品发布阶段单独评估
 ```
 
 ## 1.3 项目不是
@@ -107,20 +98,18 @@ JAV-MetadataHub 是一个面向数据分析的日本 AV 公开元数据底座。
 
 ---
 
-# 2. 合规与数据采集原则
+# 2. 数据治理与采集原则
 
-## 2.1 合规原则
+## 2.1 工程原则
 
-1. 只采集公开元数据。
-2. 不抓取、不保存、不生成盗版资源链接。
-3. 不绕过登录、验证码、付费墙、DRM 或访问控制。
-4. 遵守 API 条款、robots、速率限制和站点使用约束。
-5. 采集器必须可限速、可暂停、可重试、可审计。
-6. 对第三方 HTML 页面只做按需补源，不做无差别全站镜像。
-7. 图片资源第一版只保存 URL，不下载原图。
-8. 人物信息仅限公开艺名和公开演职员信息，不采集私人身份。
-9. 所有字段必须有 source、confidence、fetched_at。
-10. 不确定字段进入 observation，不直接覆盖主表。
+1. 公开元数据采集以可回放、可审计为目标。
+2. 来源访问方式由 source spec 记录，并在实现前固化样本和 fixtures。
+3. 采集器具备限速、暂停、重试和审计能力。
+4. HTML 页面型来源优先按明确目标补充字段，不作为 V1 主链路。
+5. 图片资源第一版保存 URL metadata。
+6. 人物信息以公开艺名和公开演职员信息为主。
+7. 所有字段保留 source、confidence、fetched_at。
+8. 不确定字段进入 observation，canonical 字段通过解析和提升逻辑更新。
 
 ## 2.2 数据治理原则
 
@@ -225,9 +214,9 @@ Keep evidence：
 风险：
 
 ```text
-- 不应视为唯一事实源
+- 不是唯一事实源
 - 数据存在错误和遗漏
-- JSON API 不应强依赖
+- JSON API 作为辅助路径处理
 - dump 格式可能变化
 ```
 
@@ -1462,7 +1451,7 @@ P3-P5 进入 entity_match_candidates。
 - name_en 完全一致 + source 一致
 ```
 
-禁止自动合并：
+自动合并排除项：
 
 ```text
 - 只因为中文名相同
@@ -2480,7 +2469,7 @@ mypy src
 要求：
 - README.md 包含：
   - 项目定位
-  - 合规边界
+  - 快速开始说明
   - 快速开始
   - 环境变量
   - 数据库初始化
@@ -2490,9 +2479,7 @@ mypy src
 - AGENTS.md 包含 Codex 工程约束
 - docs/architecture.md 包含架构说明
 - docs/schema.md 包含表结构说明
-- docs/compliance.md 包含采集边界
 - docs/data_sources.md 包含数据源优先级
-- 不编写任何视频下载、磁力链接相关内容
 
 输出：
 - 完整文档
@@ -2509,13 +2496,11 @@ mypy src
 ````markdown
 # AGENTS.md
 
-## Project
+## 项目
 
-JAV-MetadataHub is a public metadata foundation for Japanese adult video metadata analytics.
+JAV-MetadataHub 是一个面向日本成人成人视频元数据分析的公开元数据底座。
 
-The project only handles public metadata. It must not implement or assist with video downloading, torrent/magnet indexing, piracy, DRM bypassing, paywall bypassing, captcha bypassing, or private personal information collection.
-
-## Tech Stack
+## 技术栈
 
 - Python 3.12+
 - PostgreSQL 15+
@@ -2532,35 +2517,30 @@ The project only handles public metadata. It must not implement or assist with v
 - mypy
 - DuckDB / Parquet
 
-## Core Principles
+## 核心原则
 
-1. Raw data must be saved to `source_records` before normalization.
-2. Uncertain fields must be saved to `field_observations`.
-3. Do not blindly overwrite master fields.
-4. Every field should preserve source, confidence, and fetched/observed time.
-5. Entity resolution must be conservative.
-6. Do not merge people only by name.
-7. Do not crawl entire third-party websites in V1.
-8. Do not download images in V1; store URLs only.
-9. Do not implement video downloading or magnet/torrent features.
-10. All API clients must have rate limiting, retries, logging, and tests.
+1. 原始来源数据在标准化前保存到 `source_records`。
+2. 不确定、冲突或来源特定字段保存到 `field_observations`。
+3. canonical 字段通过明确的解析和提升逻辑更新。
+4. 每个字段保留 source、confidence 和 fetched/observed time。
+5. 实体解析保持保守，并保留候选匹配证据。
+6. V1 图片和媒体字段保存 URL metadata。
+7. API clients 具备限流、重试、日志和测试。
 
-## Coding Rules
+## 编码规则
 
-- Use SQLAlchemy 2.x typed declarative models.
-- Use Pydantic v2 models for DTOs and API responses.
-- Use async httpx for external API clients.
-- Use tenacity for retry logic.
-- Keep parsers deterministic and testable.
-- Add tests for all normalizers, parsers, repositories, and services.
-- Do not call real external APIs in tests.
-- Use fixtures and mocked responses.
-- Do not log secrets.
-- Do not commit .env files.
+- 使用 SQLAlchemy 2.x typed declarative models。
+- 使用 Pydantic v2 models 作为 DTO 和 API responses。
+- 外部 API client 使用 async httpx。
+- 使用 tenacity 实现 retry。
+- parser 保持 deterministic 和 testable。
+- 为 normalizers、parsers、repositories 和 services 添加测试。
+- 测试使用 fixtures 和 mocked responses。
+- 日志对 secret-like values 做 redaction。
 
-## Testing
+## 测试
 
-Before completing a task, run when applicable:
+任务完成前按需运行：
 
 ```bash
 pytest
@@ -2569,33 +2549,17 @@ ruff format --check .
 mypy src
 ````
 
-If a command cannot run, explain why and provide the closest verification performed.
+如果某个命令无法运行，说明原因，并提供已执行的最接近验证方式。
 
-## Prohibited Features
+## 预期任务输出
 
-Do not add:
+每个任务都应提供：
 
-* video downloaders
-* torrent/magnet collection
-* ed2k links
-* piracy resource indexing
-* DRM bypass
-* paywall bypass
-* captcha bypass
-* account sharing
-* private personal data scraping
-* facial recognition
-* real identity inference
-
-## Expected Task Output
-
-For every task, provide:
-
-1. Summary of changes
-2. Files changed
-3. Tests run
-4. Known limitations
-5. Suggested next task
+1. 变更摘要
+2. 修改的文件
+3. 运行的测试
+4. 已知限制
+5. 建议的下一个任务
 
 ````
 
@@ -2606,28 +2570,18 @@ For every task, provide:
 ```markdown
 # JAV-MetadataHub
 
-JAV-MetadataHub is a public metadata foundation for Japanese adult video metadata analytics.
+JAV-MetadataHub 是一个面向日本成人成人视频元数据分析的公开元数据底座。
 
-It collects, normalizes, and serves public metadata such as works, public performer/staff names, companies, series, tags, external IDs, source records, and field observations.
+它采集、标准化并提供作品、公开艺名/工作人员名、公司、系列、标签、external IDs、source records 和 field observations 等 metadata。
 
-## Scope
+## 范围
 
-This project handles public metadata only.
+V1 聚焦公开元数据建模、source records、field observations、canonical entities、导出和只读 API。
 
-It does not support:
-
-- video downloading
-- torrent or magnet links
-- piracy resource indexing
-- DRM bypassing
-- paywall bypassing
-- captcha bypassing
-- private personal information collection
-
-## Architecture
+## 架构
 
 ```text
-External public metadata sources
+External metadata sources
     ↓
 Collectors
     ↓
@@ -2644,13 +2598,13 @@ Gold analytics tables
 CSV / Parquet / REST API
 ````
 
-## V1 Data Source
+## V1 数据源
 
-V1 focuses on FANZA / DMM API as the primary source.
+V1 以 FANZA / DMM API 和 R18.dev dump 为主。
 
-R18.dev dump and other third-party sources may be added in later phases as supplemental sources.
+其他来源可在后续阶段作为补充 observations 评估。
 
-## Main Tables
+## 主要表
 
 * collector_runs
 * source_records
@@ -2673,7 +2627,7 @@ R18.dev dump and other third-party sources may be added in later phases as suppl
 * entity_merge_logs
 * media_assets
 
-## Quick Start
+## 快速开始
 
 ### 1. Clone
 
@@ -2682,45 +2636,45 @@ git clone <repo-url>
 cd JAV-MetadataHub
 ```
 
-### 2. Configure environment
+### 2. 配置环境
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`.
+编辑 `.env`。
 
-### 3. Start PostgreSQL
+### 3. 启动 PostgreSQL
 
 ```bash
 docker compose up -d postgres
 ```
 
-### 4. Run migration
+### 4. 运行 migration
 
 ```bash
 alembic upgrade head
 ```
 
-### 5. Run tests
+### 5. 运行测试
 
 ```bash
 pytest
 ```
 
-### 6. Run API
+### 6. 启动 API
 
 ```bash
 uvicorn jav_metadatahub.api.main:app --reload
 ```
 
-### 7. Export data
+### 7. 导出数据
 
 ```bash
 javhub export --format parquet
 ```
 
-## Development
+## 开发
 
 ```bash
 ruff check .
@@ -2729,11 +2683,7 @@ mypy src
 pytest
 ```
 
-## Compliance
-
-See `docs/compliance.md`.
-
-## Data Source Policy
+## 数据源说明
 
 See `docs/data_sources.md`.
 

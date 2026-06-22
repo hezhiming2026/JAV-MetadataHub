@@ -1,23 +1,21 @@
-# JavDB Source Spec
+# JavDB 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/data_sources.md`, and `docs/compliance.md`.
+本文档说明 JavDB 在 JAV-MetadataHub 中的补充观察定位。JavDB 不是 V1 主来源，后续可作为 V2 补充观察来源评估。
 
-JavDB is not a V1 source. It may only be considered in V2 as a supplemental observation source.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `javdb` |
-| Stage | V2 candidate |
-| Source type | Community/page-style metadata source |
-| Primary use | Missing-field supplement and conflict observation |
-| Canonical authority | None by default |
-| Bulk crawling | Not allowed |
+| source name | `javdb` |
+| 阶段 | V2 candidate |
+| 来源类型 | community/page-style metadata source |
+| 主要用途 | 缺失字段补充、冲突观察、社区信号参考 |
+| canonical authority | 默认无 |
+| 采集形态 | 后续按具体实现方案评估 |
 
-## Possible Observation Fields
+## 可能观察字段
 
-Future V2 work may observe:
+后续 V2 工作可观察：
 
 - code/title variants
 - release date
@@ -30,57 +28,24 @@ Future V2 work may observe:
 - cover URL
 - rating-like signals when available
 
-All observed fields must be written to `source_records` and `field_observations`.
+观察到的字段进入 `source_records` 和 `field_observations`，再由 ingestion 规则决定后续处理。
 
-## Required Policy
-
-Allowed future pattern:
+## 推荐数据流
 
 ```text
-approved exact code
+source input
     -> source_records
     -> parser/provider
     -> field_observations
     -> candidate review
 ```
 
-JavDB must not directly update:
+JavDB 字段用于补充观察和冲突提示。`works`、`people`、`companies`、`series`、`tags` 以及关系表的更新通过明确 field-level resolution logic 执行。
 
-- `works`
-- `people`
-- `companies`
-- `series`
-- `tags`
-- relationship tables
+## 来源说明
 
-Canonical promotion requires explicit field-level resolution logic.
+调研文档记录 JavDB 未确认官方 public dump/API，并且页面稳定性、可用性和周边生态实现方式需要按版本复核。实现前应先更新 sample evidence 和 parser fixture。
 
-## Risk Notes
+## 测试
 
-The research document describes JavDB as a source with no confirmed official public dump/API and with anti-crawl/access-stability risk in the surrounding ecosystem.
-
-This project must not implement:
-
-- full-site crawling
-- Cloudflare bypass
-- captcha bypass
-- login bypass
-- paid-content bypass
-- proxy/solver integration for access-control bypass
-
-## Tests
-
-If implemented later, tests must use local fixtures and mocked responses only.
-
-## Prohibited
-
-- No V1 implementation.
-- No full crawler.
-- No canonical overwrite.
-- No video downloading.
-- No torrent, magnet, BT, or ed2k collection.
-- No piracy resource indexing.
-- No access-control bypass.
-- No private personal information collection.
-- No facial recognition.
-- No real identity inference.
+如果后续实现，测试使用本地 fixtures 和 mocked responses，覆盖字段解析、observation 写入、冲突保留和幂等行为。
