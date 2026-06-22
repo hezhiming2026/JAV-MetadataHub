@@ -71,7 +71,7 @@ class SourceRecord(Base):
     source_url: Mapped[str | None] = mapped_column(Text)
     record_type: Mapped[str] = mapped_column(Text, nullable=False)
     payload_type: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'json'"))
-    raw_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    raw_json: Mapped[dict[str, Any] | list[Any] | None] = mapped_column(JSONB)
     raw_html: Mapped[str | None] = mapped_column(Text)
     raw_text: Mapped[str | None] = mapped_column(Text)
     http_status: Mapped[int | None] = mapped_column(Integer)
