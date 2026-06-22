@@ -1,0 +1,44 @@
+{
+  "content_id": " cid-001 ",
+  "product_id": " product-001 ",
+  "dvd_id": " DVD-001 ",
+  "maker_product": " ABP-00477 ",
+  "title": " サンプル作品 ",
+  "date": "2020-01-02",
+  "volume": " 120 ",
+  "URL": " https://www.dmm.co.jp/digital/videoa/-/detail/=/cid=cid-001/ ",
+  "affiliateURL": "https://affiliate.example.invalid/secret",
+  "iteminfo": {
+    "actress": [
+      {"name": " Alice "},
+      {"name": ""},
+      {"name": "Alice"},
+      {"name": " Beth "}
+    ],
+    "actor": [" Bob ", {"name": " Carl "}],
+    "director": {"name": " Director A "},
+    "maker": [{"name": " Maker One "}, {"name": " Maker Two "}],
+    "label": [{"name": " Label One "}, {"name": " Label Two "}],
+    "series": [{"name": " Series One "}, {"name": " Series Two "}],
+    "genre": [{"name": " Drama "}, {"name": "Drama"}, {"name": " Featured "}]
+  },
+  "imageURL": {
+    "large": " https://pics.example.invalid/large.jpg ",
+    "small": "https://pics.example.invalid/small.jpg"
+  },
+  "sampleImageURL": {
+    "sample_s": {
+      "image": [
+        "https://pics.example.invalid/sample-1.jpg",
+        "",
+        "https://pics.example.invalid/sample-2.jpg"
+      ]
+    },
+    "sample_l": {
+      "image": [
+        "https://pics.example.invalid/sample-1.jpg",
+        {"url": "https://pics.example.invalid/sample-3.jpg"}
+      ]
+    }
+  }
+}
