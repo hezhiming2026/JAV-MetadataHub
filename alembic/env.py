@@ -45,6 +45,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             include_schemas=True,
             compare_type=True,
+            version_table_schema="javhub",
         )
 
         with context.begin_transaction():
