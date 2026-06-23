@@ -4,7 +4,8 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import bindparam, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
 from jav_metadatahub.db.models import FieldObservation
@@ -69,6 +70,16 @@ def _normalize_optional_status(value: str | None) -> str | None:
     if value is None:
         return None
     return _normalize_status(value)
+
+
+def _field_value_predicate(field_value: ObservationValue) -> Any:
+    if field_value is None:
+        return FieldObservation.field_value.is_(None)
+    return FieldObservation.field_value == bindparam(
+        "field_value",
+        field_value,
+        type_=JSONB,
+    )
 
 
 class FieldObservationRepository:
@@ -206,7 +217,7 @@ class FieldObservationRepository:
             FieldObservation.entity_id == _validate_positive_int(entity_id, "entity_id"),
             FieldObservation.field_name == _clean_required_string(field_name, "field_name"),
             FieldObservation.source == _clean_required_string(source, "source"),
-            FieldObservation.field_value == field_value,
+            _field_value_predicate(field_value),
             FieldObservation.observation_status == "active",
         )
 

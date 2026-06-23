@@ -21,6 +21,19 @@ def compile_sql(statement: Any) -> tuple[str, dict[str, Any]]:
     return str(compiled), compiled.params
 
 
+def duplicate_statement(field_value: Any) -> Any:
+    repository, session = make_repository()
+    repository.find_duplicate(
+        entity_type="work",
+        entity_id=1,
+        field_name="title_ja",
+        source="fanza",
+        source_record_id=10,
+        field_value=field_value,
+    )
+    return session.scalar.call_args.args[0]
+
+
 def test_create_stores_observation_and_flushes_without_commit() -> None:
     repository, session = make_repository()
     observed_at = datetime(2026, 6, 22, 12, 0, tzinfo=UTC)
@@ -151,10 +164,42 @@ def test_find_duplicate_matches_active_without_status_in_fact_key() -> None:
     sql, params = compile_sql(statement)
     assert "field_observations.observation_status = %(observation_status_1)s" in sql
     assert "field_observations.source_record_id = %(source_record_id_1)s" in sql
-    assert "field_observations.field_value = %(field_value_1)s::JSONB" in sql
+    assert "field_observations.field_value = %(field_value)s::JSONB" in sql
     assert params["observation_status_1"] == "active"
     assert params["source_record_id_1"] == 10
-    assert params["field_value_1"] == {"title": "value"}
+    assert params["field_value"] == {"title": "value"}
+
+
+def test_find_duplicate_binds_string_field_value_as_jsonb() -> None:
+    statement = duplicate_statement("cid-001")
+    compiled = statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+
+    assert "field_observations.field_value = %(field_value)s::JSONB" in sql
+    assert "::VARCHAR" not in sql
+    assert compiled.params["field_value"] == "cid-001"
+    assert isinstance(compiled.binds["field_value"].type, postgresql.JSONB)
+
+
+@pytest.mark.parametrize("field_value", [{"content_id": "cid-001"}, ["Alice", "Beth"]])
+def test_find_duplicate_binds_collection_field_value_as_jsonb(field_value: Any) -> None:
+    statement = duplicate_statement(field_value)
+    compiled = statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+
+    assert "field_observations.field_value = %(field_value)s::JSONB" in sql
+    assert compiled.params["field_value"] == field_value
+    assert isinstance(compiled.binds["field_value"].type, postgresql.JSONB)
+
+
+def test_find_duplicate_uses_is_null_for_none_field_value() -> None:
+    statement = duplicate_statement(None)
+    compiled = statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+
+    assert "field_observations.field_value IS NULL" in sql
+    assert "field_observations.field_value = " not in sql
+    assert "field_value" not in compiled.params
 
 
 def test_find_duplicate_uses_is_null_for_missing_source_record_id() -> None:
