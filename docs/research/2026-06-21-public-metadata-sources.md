@@ -2,9 +2,9 @@
 
 ## 研究范围与结论摘要
 
-本报告只讨论**公开元数据**的采集、治理与工程接入，不讨论视频下载、磁力、破解、绕过付费、隐私数据抓取等内容。研究重点放在你列出的九类来源，并优先采用官方文档、官方站点、GitHub 仓库、项目 Wiki、发布说明与活跃维护项目作为证据。需要先说明一点：部分站点在当前环境下存在**地域限制**或**反爬机制**，例如 DMM Web API 官方页面会直接返回“当前地区不可用”，JavLibrary、JavDB 等也被多个活跃项目明确标注为需要 Cloudflare 相关处理或人工会话；因此，某些字段覆盖结论只能基于“官方信息 + 活跃 OSS 适配器”的交叉验证，而不能把它们当成完全稳定的官方承诺。citeturn41view0turn42view0turn19view0turn49view0turn58view0
+本报告只讨论**公开元数据**的采集、治理与工程接入；视频本体、磁力、破解、付费内容处理和非公开个人数据不在研究范围内。研究重点放在你列出的九类来源，并优先采用官方文档、官方站点、GitHub 仓库、项目 Wiki、发布说明与活跃维护项目作为证据。需要先说明一点：部分站点在当前环境下存在**地域限制**或**访问稳定性机制**，例如 DMM Web API 官方页面会直接返回“当前地区不可用”，JavLibrary、JavDB 等也被多个活跃项目明确标注为需要 Cloudflare 相关处理或人工会话；因此，某些字段覆盖结论只能基于“官方信息 + 活跃 OSS 适配器”的交叉验证，而不能把它们当成完全稳定的官方承诺。citeturn41view0turn42view0turn19view0turn49view0turn58view0
 
-如果目标是建设一个面向后续分析的 **JAV-MetadataHub**，我给出的核心结论是：**V1 应以 FANZA/DMM Web Service API 与 R18.dev dump 为主底座，Javinizer-Go 或 MetaTube 作为适配/参考实现而不是权威上游；JavLibrary、JavDB、JavBus、AVWikiDB 应作为补充型 observation 来源，而不是一开始就当成 canonical truth。**原因很直接：DMM 是官方 API 入口，R18.dev 明确提供结构化 JSON 访问与周度 dump，且声明“全部结构化数据使用 CC0”；相比之下，JavLibrary/JavDB/JavBus 多数只能从 HTML 页面或社区 wrapper 间接接入，稳定性、ToS 风险和反爬风险都明显更高。citeturn40search0turn52search0turn8view0turn9view0turn19view0turn55view0
+如果目标是建设一个面向后续分析的 **JAV-MetadataHub**，我给出的核心结论是：**V1 应以 FANZA/DMM Web Service API 与 R18.dev dump 为主底座，Javinizer-Go 或 MetaTube 作为适配/参考实现而不是权威上游；JavLibrary、JavDB、JavBus、AVWikiDB 应作为补充型 observation 来源，而不是一开始就当成 canonical truth。**原因很直接：DMM 是官方 API 入口，R18.dev 明确提供结构化 JSON 访问与周度 dump，且声明“全部结构化数据使用 CC0”；相比之下，JavLibrary/JavDB/JavBus 多数只能从 HTML 页面或社区 wrapper 间接接入，稳定性和 ToS 不确定性都明显更高。citeturn40search0turn52search0turn8view0turn9view0turn19view0turn55view0
 
 从工程视角看，最合理的路线不是“先做一个巨大的全字段主表”，而是做成**多源 observation 仓 + 规则提升的 canonical 层**。这个判断并不是抽象架构偏好，而是由现有生态决定的：Javinizer 强调可 mix-and-match 多个 scraper 的字段，Javinizer-Go 明确支持多源抓取、批量处理、NFO 输出与 API/Web UI，MetaTube 则把“provider 优先级”“按 provider 过滤”“查看已启用 provider 列表”都做成了产品能力。换句话说，**多源冲突是常态，不是边角问题**。citeturn16view0turn19view0turn55view0turn56view0
 
@@ -12,11 +12,11 @@
 
 下表给出面向工程实现的总览。这里的“公开 API / dump / SDK / GitHub 项目”是指本轮公开证据中可确认的能力；“批量”“增量”强调**工程可操作性**，不是法律许可结论。
 
-| 数据源 | 类型 | 公开 API / dump / SDK / GitHub 项目 | 批量采集可行性 | 增量更新可行性 | 使用限制与反爬风险 | 综合建议 |
+| 数据源 | 类型 | 公开 API / dump / SDK / GitHub 项目 | 批量采集可行性 | 增量更新可行性 | 使用限制与访问稳定性 | 综合建议 |
 |---|---|---|---|---|---|---|
 | FANZA / DMM Web Service API | 官方 API | 有官方 Web API；需 API ID / Affiliate ID，且官方文档提示 Affiliate ID 末尾需为 990–999；社区项目也明确“直连 dmmapi 需要开通 dmm affiliate”。citeturn52search0turn40search0turn53search6 | 高。最适合程序化、结构化采集。citeturn52search0turn53search6 | 中。公开证据未见官方 changefeed；建议按发布日期窗口重扫最近区间。citeturn52search0turn53search6 | 中。存在地域限制，且 API 带有联盟/信用展示约束。citeturn41view0turn42view0turn0search3 | **优先级最高** |
 | R18.dev | 公开结构化数据站点 + dump | 有 JSON 形式详情入口证据、周度 dump、历史 dump 目录，且声明“全部结构化数据为 CC0”。citeturn7search0turn8view0turn9view0 | 很高。周度 dump 适合冷启动全量导入。citeturn9view0 | 很高。可按周 dump 做 diff；也可按编号回查 JSON。citeturn7search0turn9view0 | 中。2025 年社区曾报告搜索与 URL 抓取出现 403，但 dump 路线仍被社区拿来继续使用。citeturn60search3turn60search1 | **优先级最高** |
-| Javinizer | OSS 聚合抓取与 NFO 生成 | 有 GitHub 项目；旧项目已归档，作者明确建议迁移到 Javinizer-Go。支持多源 mix-and-match 与 NFO。citeturn16view0turn15view0 | 作为“采集框架”可行，但不宜当权威源。citeturn16view0 | 中。可做批任务，但本质依赖上游源稳定性。citeturn16view0 | 中高。依赖多站点 scraper，受上游页面/反爬变化影响。citeturn16view0turn34search1 | 适合作为参考实现与兼容层 |
+| Javinizer | OSS 聚合抓取与 NFO 生成 | 有 GitHub 项目；旧项目已归档，作者明确建议迁移到 Javinizer-Go。支持多源 mix-and-match 与 NFO。citeturn16view0turn15view0 | 作为“采集框架”可行，但不宜当权威源。citeturn16view0 | 中。可做批任务，但本质依赖上游源稳定性。citeturn16view0 | 中高。依赖多站点 scraper，受上游页面变化影响。citeturn16view0turn34search1 | 适合作为参考实现与兼容层 |
 | Javinizer-Go | OSS 聚合抓取、API、Web UI、批任务 | 有 GitHub 项目、持续发布、内置 CLI/TUI/API/Web UI、Swagger、批 job API 迹象。citeturn19view0turn57view0turn18search16 | 高。更现代，适合批量整理/抓取工作流。citeturn19view0turn57view0 | 中高。可以围绕 batch job / re-scrape / recent horizon 做。citeturn57view0 | 中高。仍受 R18.dev、JavLibrary、JavDB 等上游可用性影响。citeturn19view0turn57view0 | **优先级高，作为接入层而非主源** |
 | MetaTube / metatube-server | OSS 后端 API 聚合层 | 有官方社区主页、Wiki、/v1/providers、provider 优先级、20+ provider、RESTful API、SQLite/PostgreSQL。citeturn56view0turn55view0turn22search1 | 高。适合作为 federation / 兼容层。citeturn56view0turn55view0 | 中高。取决于 provider 与本地数据库同步策略。citeturn56view0turn22search1 | 中高。不是权威上游，且 provider 质量不一致，官方文档也明确提醒第三方源可能不准确或缺失。citeturn55view0 | **优先级高，作为可插拔增强层** |
 | JavLibrary | 社区数据库 / 页面型源 | 未见官方 API；社区 wrapper 提供 detail / comments / reviews / maker / label / director / tag / star 等接口，但明确要求手工 session / Cookie，并要跨过 Cloudflare。citeturn49view0turn34search1turn58view0 | 低到中。纯自动批量抓取不稳，OpenAver 甚至把它限制为手动、精确番号、桌面真人模式。citeturn58view0 | 低。没有公开 dump / changefeed。citeturn49view0 | 高。Cloudflare、人机验证、会话 Cookie 都是实锤。citeturn49view0turn34search1turn58view0 | **只适合补标签、评分、长尾番号** |
@@ -45,7 +45,7 @@
 
 对你要做“元数据底座”这件事，最关键的不是“谁字段最多”，而是“谁的字段最适合晋升为主字段”。从这个角度看，**番号、标题、发布日期、时长、女优关系、厂牌层级、封面主图**最适合作为 canonical；**评分、评论、社区标签、翻译标题、样张列表、男优、别名**则更适合作为 observation 或可选二级字段，因为它们在上游覆盖明显不均、来源之间的冲突也更频繁。这个判断与多源项目的设计高度一致：Javinizer / Javinizer-Go 都是把多个源混合后再输出，MetaTube 甚至把 provider 优先级与过滤公开暴露出来。citeturn16view0turn19view0turn55view0turn59view0
 
-## 工程接入与合规评估
+## 工程接入与来源评估
 
 ### 批量采集与增量更新
 
@@ -53,19 +53,19 @@
 
 **R18.dev** 则非常像专门为“底座工程”准备过的来源：站点直接提供 JSON 风格详情样例，dump 页又公开了 latest dump 与按日期排列的历史 dump，并声明所有结构化数据 CC0。工程上，这意味着你完全可以做出 `full snapshot + weekly diff + provenance hash` 的一套标准仓储流程；冷启动时导一次全量，之后每周下新 dump 做主键 diff 与字段级 diff。citeturn7search0turn8view0turn9view0
 
-**JavLibrary / JavDB / JavBus / AVWikiDB** 都不应该被设计成“无人值守的大规模全量爬虫”。JavLibrary 的问题最明确：多个项目都显示它被 Cloudflare challenge 保护，OpenAver 甚至专门把它限制为“桌面真人、精确番号、不可批量、不可给 AI 代理使用”的 BETA 模式；这实际上已经给了你一个很有价值的工程信号——**这类源更适合作为人工触发的补录通道，而不是底座主流水线**。JavDB 也被 Javinizer-Go 标记为可用 FlareSolverr 的 provider；JavScraper 插件则明确要求通过 jsproxy 或代理访问若干站点。AVWikiDB 目前公开证据互相冲突，更说明它只能放在 observation lane。citeturn49view0turn34search1turn58view0turn19view0turn34search8turn36search1turn51search1
+**JavLibrary / JavDB / JavBus / AVWikiDB** 更适合作为目标明确的补充观察来源。JavLibrary 的问题最明确：多个项目都显示它被 Cloudflare challenge 保护，OpenAver 甚至专门把它限制为“桌面真人、精确番号、不可批量、不可给 AI 代理使用”的 BETA 模式；这实际上已经给了你一个很有价值的工程信号：**这类源更适合作为人工触发的补录通道，而不是底座主流水线**。JavDB 也被 Javinizer-Go 标记为可用 FlareSolverr 的 provider；JavScraper 插件则明确要求通过 jsproxy 或代理访问若干站点。AVWikiDB 目前公开证据互相冲突，更说明它适合放在 observation lane。citeturn49view0turn34search1turn58view0turn19view0turn34search8turn36search1turn51search1
 
-### 使用限制、ToS、robots 与反爬风险
+### 使用限制、ToS、robots 与访问稳定性
 
 DMM/FANZA 的风险主要是**契约型限制**而不是技术型障碍。官方结果页显示该服务存在**地域可用性限制**；官方 guide 搜索结果还明确提到要确认 API ID，且 Affiliate ID 末尾必须是 990–999；信用展示页面则要求进行指定 credit 标识。对企业工程来说，这意味着 DMM 更像“要按照联盟/API 规则接入”的商业接口，而不是“随便抓就行”的开放数据源。citeturn41view0turn42view0turn52search0turn0search3
 
 R18.dev 的法律与工程画像与 DMM 很不一样。它最大的优势是：**结构化数据许可清晰**，官方直接写明全部结构化数据采用 CC0；这会极大降低你在“元数据字段落库、做分析、做去重规则、做实体解析”上的许可摩擦。但要注意，CC0 明确针对的是**structured data**，并不等于封面、样张、外链图片也自动进入同一许可边界。工程上最稳妥的做法，是把**文本/结构化字段**与**图片资产**分开治理，并在资产表上单独记录许可状态与来源。citeturn8view0turn7search0
 
-JavLibrary、JavDB、JavBus、AVWikiDB 的主要风险是**无官方数据接口 + 反爬/访问控制 + 许可不清**。JavLibrary 需要 session、Cookie、Cloudflare 处理已经被多个项目写进 README 或发布说明；JavDB / JavLibrary 在 Javinizer-Go 中也被直接标记为可配合 FlareSolverr；JavScraper 插件则把“用 jsproxy / 代理访问几个网站下载元数据和图片”写进了项目说明。对于要长期运行的数据平台，这意味着一旦把这些源放入中心化、自动化、大规模任务里，你会同时承担**稳定性风险、封禁风险与 ToS 风险**。citeturn49view0turn19view0turn34search8turn58view0
+JavLibrary、JavDB、JavBus、AVWikiDB 的主要注意点是**无官方数据接口 + 访问控制 + 许可不清**。JavLibrary 需要 session、Cookie、Cloudflare 处理已经被多个项目写进 README 或发布说明；JavDB / JavLibrary 在 Javinizer-Go 中也被直接标记为可配合 FlareSolverr；JavScraper 插件则把“用 jsproxy / 代理访问几个网站下载元数据和图片”写进了项目说明。对于要长期运行的数据平台，这意味着一旦把这些源放入中心化、自动化、大规模任务里，你会同时承担**稳定性风险、封禁风险与 ToS 风险**。citeturn49view0turn19view0turn34search8turn58view0
 
-### 合规风险分级
+### 来源使用注意分级
 
-如果从“做内部分析底座”的合规保守性来分，我建议这样看：
+如果从“做内部分析底座”的来源稳定性和使用注意来分，我建议这样看：
 
 **低到中风险**：R18.dev 的结构化字段。原因是许可清晰、dump 明确、适合保留来源与快照版本。citeturn8view0turn9view0
 
@@ -181,4 +181,4 @@ CID / 内容 ID / 各站内链 ID；
 
 落到 V1 的最小可行方案，可以非常明确：  
 **用 R18.dev dump 建全量基座，用 DMM/FANZA API 做主字段补全与校正，用 Javinizer-Go 或 OpenAver 做内部测试与回归基线，不把 JavLibrary/JavDB/JavBus/AVWikiDB 放进无人值守主链路。**  
-这样做，你会得到一个合规边界更清晰、可追溯性更强、后续也更容易扩展到分析任务的 JAV-MetadataHub。citeturn8view0turn9view0turn52search0turn19view0turn59view0
+这样做，你会得到一个来源路径更清晰、可追溯性更强、后续也更容易扩展到分析任务的 JAV-MetadataHub。citeturn8view0turn9view0turn52search0turn19view0turn59view0

@@ -1,36 +1,34 @@
-# R18.dev Dump Source Spec
+# R18.dev Dump 来源规格
 
-This source spec is derived from `docs/research/2026-06-21-public-metadata-sources.md`, `docs/architecture.md`, `docs/schema.md`, and `docs/compliance.md`.
+本文档说明 R18.dev dump 在 JAV-MetadataHub 中的 V1 接入方式。它是结构化 dump 来源，适合 seed、backfill 和跨来源校验。
 
-R18.dev dump is a V1 structured source for seed, backfill, and cross-source validation. It must be handled as public metadata only.
+## 来源角色
 
-## Source Role
-
-| Attribute | Policy |
+| 属性 | 说明 |
 | --- | --- |
-| Source name | `r18` |
-| Stage | V1 structured dump source |
-| Source type | Public structured dump |
-| Primary use | Historical seed, full snapshot import, English-title supplement, cross-source validation |
-| Canonical authority | Secondary to FANZA/DMM for most Japanese canonical fields; preferred for English title when available |
-| Bulk access | Dump import only |
-| Online JSON/API use | Not required for V1; do not rely on it for bulk ingestion |
+| source name | `r18` |
+| 阶段 | V1 structured dump source |
+| 来源类型 | public structured dump |
+| 主要用途 | 历史 seed、全量快照导入、英文标题补充、跨来源校验 |
+| canonical 优先级 | 多数字段低于 FANZA/DMM；英文标题有值时优先作为英文标题候选 |
+| bulk access | dump import |
+| online JSON/API | V1 不作为 bulk 主路径 |
 
-## Known Access Pattern
+## 已知访问形态
 
-The research document records:
+调研文档记录了以下仓库内事实：
 
-- Latest dump entrypoint: `https://r18.dev/dumps/latest`
-- Historical naming pattern: `r18dotdev_dump_YYYY-MM-DD.sql.gz`
-- Update pattern: weekly dump publication was observed in the source research.
-- File type: gzipped SQL dump.
-- License note: structured data was reported as CC0 in the source research.
+- latest dump entrypoint: `https://r18.dev/dumps/latest`
+- 历史命名模式：`r18dotdev_dump_YYYY-MM-DD.sql.gz`
+- 更新模式：调研时观察到 weekly dump publication。
+- 文件类型：gzipped SQL dump。
+- 许可说明：调研中记录 structured data 为 CC0。
 
-Implementation must treat these facts as repository-sourced research. Do not refresh them from the internet during tests.
+实现和测试应把这些信息视作 repository-sourced research。测试使用本地 fixtures，不需要实时刷新互联网证据。
 
-## Import Strategy
+## 导入策略
 
-Preferred V1 strategy:
+推荐 V1 流程：
 
 ```text
 download or provide dump file
@@ -39,26 +37,26 @@ download or provide dump file
     -> serialize relevant source rows into source_records.raw_json
     -> parse source_records
     -> write field_observations
-    -> promote only through explicit ingestion rules
+    -> promote through explicit ingestion rules
 ```
 
-The importer must not parse directly into canonical tables.
+importer 负责先保存来源证据，再交给 parser 和 ingestion service 处理 canonical candidates。
 
-## Source Keys
+## Source Key 规则
 
-Use the most stable available key per record type.
+每种 record type 使用最稳定的可用 key。
 
-| Record Type | Preferred `source_key` | Notes |
+| Record Type | Preferred `source_key` | 说明 |
 | --- | --- | --- |
-| `work` | `content_id` when available; otherwise `dvd_id` | Preserve both as external IDs when available. |
-| `person` | source person ID when available | Store public names and aliases as observations. |
-| `company` | maker/label ID when available | Preserve role such as maker or label. |
-| `series` | series ID when available | Preserve source name variants. |
-| `tag` | category/tag ID when available | Preserve language and source tag type. |
+| `work` | `content_id` when available; otherwise `dvd_id` | 两者都可作为 external IDs 保留。 |
+| `person` | source person ID when available | public names 和 aliases 作为 observations 保存。 |
+| `company` | maker/label ID when available | 保留 maker 或 label 等 role。 |
+| `series` | series ID when available | 保留 source name variants。 |
+| `tag` | category/tag ID when available | 保留 language 和 source tag type。 |
 
-If a key is missing, generate a deterministic importer key from the source table name and stable row fields. Generated keys must be documented in importer code and tests.
+缺少 key 时，可由 importer 用 source table name 和稳定 row fields 生成 deterministic importer key；生成策略需要写入 importer 代码和测试。
 
-## Field Mapping
+## 字段映射
 
 | R18 Field / Concept | Target | Canonical Candidate | Observation Required |
 | --- | --- | --- | --- |
@@ -72,21 +70,21 @@ If a key is missing, generate a deterministic importer key from the source table
 | directors | `people`, `work_people` | relationship candidate | yes |
 | maker / label | `companies`, `work_companies` | relationship candidate | yes |
 | series | `series`, `work_series` | relationship candidate | yes |
-| categories / tags | `tags`, `work_tags` | not canonical tag mapping in V1 | yes |
+| categories / tags | `tags`, `work_tags` | source tag in V1 | yes |
 | jacket / gallery URLs | `media_assets.url` | URL-only asset candidate | yes |
 | comments/descriptions | `field_observations` | no | yes |
 
-## Canonical Promotion Rules
+## Canonical 提升规则
 
-- R18.dev can fill empty canonical work fields when no higher-priority FANZA/DMM value exists.
-- R18.dev should not overwrite populated FANZA/DMM canonical fields without an explicit resolution rule.
-- English titles from R18.dev may be preferred when FANZA/DMM does not provide English titles.
-- Source tags remain source tags in V1; canonical tag taxonomy is a later task.
-- Conflicting release dates, runtimes, names, or relationships must remain visible in `field_observations`.
+- R18.dev 可在更高优先级来源缺失时填充空 canonical work fields。
+- 已有 FANZA/DMM canonical 值通过 explicit resolution rule 更新。
+- FANZA/DMM 缺少英文标题时，可优先采用 R18.dev 的英文标题。
+- Source tags 在 V1 保持 source tags；canonical tag taxonomy 是后续任务。
+- 发行日期、时长、名称或关系冲突保留在 `field_observations` 中。
 
-## Provenance Requirements
+## 来源追溯字段
 
-Each imported record should preserve:
+每条导入记录建议保留：
 
 - source: `r18`
 - dump version or dump date when available
@@ -99,11 +97,11 @@ Each imported record should preserve:
 - imported/fetched time
 - confidence
 
-## Failure Handling
+## 失败处理
 
-The importer should record failures in `collector_runs` and, where a source record can be identified, in `source_records`.
+importer 在 `collector_runs` 中记录失败；如果能定位到 source record，也写入 `source_records`。
 
-Expected failure categories:
+常见失败类别：
 
 - dump file missing
 - decompression failed
@@ -113,26 +111,13 @@ Expected failure categories:
 - row parse failed
 - relationship target missing
 
-Failures must not discard previously imported source evidence.
+失败记录保留已导入的来源证据，便于重试和审计。
 
-## Tests
+## 测试
 
-Tests must use local fixtures only:
+测试使用本地 fixtures：
 
 - small synthetic SQL-derived records
 - serialized source rows
 - parser fixtures
-- no live dump download
-- no live R18.dev calls
-
-## Prohibited
-
-- Do not scrape R18 HTML.
-- Do not use R18 online endpoints for V1 bulk import.
-- Do not call live R18.dev in tests.
-- Do not download images.
-- Do not store video URLs, torrent links, magnet links, BT links, ed2k links, or piracy resource links.
-- Do not bypass access controls.
-- Do not collect private personal information.
-- Do not add facial recognition.
-- Do not infer real identities.
+- importer failure fixtures

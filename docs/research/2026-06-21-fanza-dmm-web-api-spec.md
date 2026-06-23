@@ -2,13 +2,13 @@
 
 ## 核心结论
 
-FANZA / DMM Web Service API 适合作为 JAV-MetadataHub 的 **V1 首选官方入口**，因为它具备公开、稳定、结构化的商品元数据接口，官方明确要求通过 `api_id` 与 `affiliate_id` 访问，并提供 ItemList、FloorList、ActressSearch、GenreSearch、MakerSearch、SeriesSearch、AuthorSearch 这类配套查询能力；同时，DMM 官方还提供 JavaScript、PHP、Go 三套 SDK 入口。对“只采集公开元数据、不涉及视频下载和绕过付费”的场景，这个 API 的能力边界是清晰且合规的。citeturn10search2turn10search3turn34search15turn42search2turn42search4turn44view0
+FANZA / DMM Web Service API 适合作为 JAV-MetadataHub 的 **V1 首选官方入口**，因为它具备公开、稳定、结构化的商品元数据接口，官方明确要求通过 `api_id` 与 `affiliate_id` 访问，并提供 ItemList、FloorList、ActressSearch、GenreSearch、MakerSearch、SeriesSearch、AuthorSearch 这类配套查询能力；同时，DMM 官方还提供 JavaScript、PHP、Go 三套 SDK 入口。对“只采集公开元数据、围绕 API 返回字段建模”的场景，这个 API 的能力边界比较清晰。citeturn10search2turn10search3turn34search15turn42search2turn42search4turn44view0
 
 从工程角度看，**ItemList 是主采集入口**，**FloorList 是配置发现入口**，**Genre/Maker/Series/ActressSearch 是维表补全入口**。完整 backfill 与增量更新都建议围绕 ItemList 做：先按 `site/service/floor` 锁定到 FANZA 成人视频域，再用 `sort=date` + `gte_date/lte_date` 做日期窗口扫描；如果某个窗口结果过大，再缩小时间窗以规避 `offset` 上限。这样既符合 API 的分页模型，也最容易实现幂等导入与断点续跑。citeturn52view1turn52view2turn52view3turn21search0turn30search0turn38search4
 
-在字段选择上，**`content_id` 最适合作为 source_records 的 source_key**，因为 ItemList 原生支持以 `cid` 查询，响应中也稳定返回 `content_id`；而 **`maker_product` 更接近人类可读的“番号/厂商品番”**，适合进入 `work_external_ids`，但不应当替代 source 主键。`product_id` 可以并存保存，但在成人视频示例里它有时与 `content_id` 相同、并不总是等价于标准化后的“番号”展示值。citeturn19view0turn27view0turn27view2
+在字段选择上，**`content_id` 最适合作为 source_records 的 source_key**，因为 ItemList 原生支持以 `cid` 查询，响应中也稳定返回 `content_id`；而 **`maker_product` 更接近人类可读的“番号/厂商品番”**，适合进入 `work_external_ids`，但不适合替代 source 主键。`product_id` 可以并存保存，但在成人视频示例里它有时与 `content_id` 相同、并不总是等价于标准化后的“番号”展示值。citeturn19view0turn27view0turn27view2
 
-合规上，要把它当作 **Affiliate API** 而不是匿名数据接口：官方说明 Web API 需要 DMM 会员、DMM Affiliate 注册和 API 利用注册；API 对 affiliate owner 免费开放；还要求显示 credit，并说明如果违反显示规定、改动 HTML 或图片等，可能停止 API 使用。官方帮助还明确：单次请求最多 100 条；同时存在“单位时间内请求次数”限制，但未公开具体数字，超过后会报错，因此客户端必须实现保守限流与退避重试。citeturn34search0turn34search2turn36search1turn34search1turn35search0turn30search0turn48search0turn49search0
+来源使用上，要把它当作 **Affiliate API** 而不是匿名数据接口：官方说明 Web API 需要 DMM 会员、DMM Affiliate 注册和 API 利用注册；API 对 affiliate owner 免费开放；还要求显示 credit，并说明如果违反显示规定、改动 HTML 或图片等，可能停止 API 使用。官方帮助还明确：单次请求最多 100 条；同时存在“单位时间内请求次数”限制，但未公开具体数字，超过后会报错，因此客户端需要实现保守限流与退避重试。citeturn34search0turn34search2turn36search1turn34search1turn35search0turn30search0turn48search0turn49search0
 
 还有一个现实约束：本次从新加坡环境调研时，DMM 的 guide、ID 确认页、credit 页都直接跳到了“该区域不可用”页面。这不等于可以断言 API 本身一定不可调用，但足以说明 **文档访问和部分站点浏览存在地域限制风险**，所以你的集成测试与生产 Collector 最好预留 JP 网络环境验证链路。citeturn55view0turn55view1turn55view2
 
@@ -35,7 +35,7 @@ DMM 官方首页说明，这是一套将 DMM 持有数据库对外开放的 Web 
 
 关于成人内容域的 `site` 值，有一个历史兼容性问题需要特别处理。较老的库与文章仍大量使用 `DMM.R18`；但 **官方 PHP SDK 的最新 release 说明已经明确写成 “Replaced DMM.R18 to FANZA”**，而较新的社区库和测试数据也都使用 `site_code=FANZA`。因此，**新实现默认应发送 `site=FANZA`，但客户端层最好兼容历史 `DMM.R18` alias 作为回退开关**。citeturn44view0turn21search0turn38search1
 
-对 JAV-MetadataHub 而言，成人视频最关键的组合不是手写猜测，而是 **先由 FloorList 做发现，再锁定 ItemList**。官方 FloorList 参考页说明它返回站点下的 service 与 floor 结构；而公开测试数据展示了 FANZA 成人视频常见组合为 `service_code=digital`、`floor_code=videoa`、`floor_id=43`、`floor_name=ビデオ`。这意味着你的 Collector 不应把 `43/videoa` 写死在业务逻辑里，而应当在初始化阶段通过 FloorList 快照得到它，再把结果存成本地配置或维表。citeturn16search0turn41search0turn16search7turn41search1turn41search4turn41search5
+对 JAV-MetadataHub 而言，成人视频最关键的组合不是手写猜测，而是 **先由 FloorList 做发现，再锁定 ItemList**。官方 FloorList 参考页说明它返回站点下的 service 与 floor 结构；而公开测试数据展示了 FANZA 成人视频常见组合为 `service_code=digital`、`floor_code=videoa`、`floor_id=43`、`floor_name=ビデオ`。这意味着 Collector 适合在初始化阶段通过 FloorList 快照得到 `43/videoa`，再把结果存成本地配置或维表。citeturn16search0turn41search0turn16search7turn41search1turn41search4turn41search5
 
 ## ItemList 参数与分页规则
 
@@ -75,7 +75,7 @@ ItemList 是 DMM 文档中的“商品搜索 API”，也是官方 SDK 中的 `P
 
 ### 其他搜索接口的正确定位
 
-FloorList、GenreSearch、MakerSearch、SeriesSearch 和 ActressSearch 不应该替代 ItemList 做主流水线。它们更适合做三件事：初始化配置、补全维表、以及将 `article/article_id` 过滤条件转成可运行查询。官方参考页和测试数据都表明，Genre/Maker/SeriesSearch 返回结果里会带 `site_code`、`service_code`、`floor_id`、`floor_code` 等上下文字段，而查询本身依赖 `floor_id`。这很适合作为 `genres`、`companies`、`series` 维表的定期刷新源。ActressSearch 则是典型的人物维表接口，返回名字、假名、三围、生日、血型、出身地、头像 URL 和各服务 listURL。citeturn10search14turn10search9turn10search16turn10search13turn51view1turn51view2turn51view3turn41search3turn41search4turn41search5
+FloorList、GenreSearch、MakerSearch、SeriesSearch 和 ActressSearch 更适合做三件事：初始化配置、补全维表、以及将 `article/article_id` 过滤条件转成可运行查询；主流水线仍围绕 ItemList。官方参考页和测试数据都表明，Genre/Maker/SeriesSearch 返回结果里会带 `site_code`、`service_code`、`floor_id`、`floor_code` 等上下文字段，而查询本身依赖 `floor_id`。这很适合作为 `genres`、`companies`、`series` 维表的定期刷新源。ActressSearch 则是典型的人物维表接口，返回名字、假名、三围、生日、血型、出身地、头像 URL 和各服务 listURL。citeturn10search14turn10search9turn10search16turn10search13turn51view1turn51view2turn51view3turn41search3turn41search4turn41search5
 
 ## 返回结构与字段映射
 
@@ -237,8 +237,8 @@ Maintain a high-water mark on DMM `date` in UTC-naive source time. Pull overlapp
 **Error handling**  
 Treat HTTP/network failure, parse failure, and API-level bad request separately. Public examples show invalid requests can return status `400` with field-level `errors` payload; official support pages additionally confirm throttling-like errors can happen when request count in a time window is exceeded. Recommended retry policy: exponential backoff with jitter for network / transient failures; no blind retry for parameter validation errors; pause-and-retry for suspected rate limits.citeturn38search3turn48search0turn49search0
 
-**Compliance**  
-Display required DMM credit anywhere the API powers a site or app. Do not alter provider HTML or images in ways prohibited by their display rules. Because DMM Affiliate has dedicated “image use rules” and “image restrictions” pages, the safest importer policy is: store remote URLs and downloaded metadata, but only mirror or republish images after an explicit compliance review in a JP-accessible environment. This is a conservative engineering inference from the official rules pages.citeturn34search1turn35search0turn34search3turn34search4
+**来源使用注意**
+DMM/FANZA API 的页面或应用展示通常需要 credit 信息。DMM Affiliate 还有专门的图片使用规则页面，因此 importer 默认保存 remote URLs 和 downloaded metadata；图片镜像或再发布适合作为单独产品决策，并在上线前复核对应规则。这里是基于官方规则页面给出的保守工程推断。citeturn34search1turn35search0turn34search3turn34search4
 
 ### FanzaClient 方法设计
 
@@ -289,29 +289,29 @@ Display required DMM credit anywhere the API powers a site or app. Do not alter 
 
 这样做的好处，是把“源主键”和“跨源人类可读代码”拆开处理，既能保证幂等，也不妨碍后续把 `maker_product_code` 与其他站点的展示番号对齐。citeturn19view0turn27view0turn27view2
 
-## 合规约束与任务清单
+## 来源使用注意与任务清单
 
-### 使用限制与合规风险
+### 使用限制与来源注意
 
 DMM Web API 并不是“无身份公共 API”，它属于 Affiliate 体系。官方首页与 guide 已经把注册前提写清楚；credit 页面说明使用 API 制作的网站或应用需要显示 credit；同页还明确写到，若不遵守显示规定、对 HTML 或图片实施改动等，可能停止 API 使用。对你的项目来说，这意味着：**内部数据底座可以用，但如果对外展示基于 DMM API 的页面或 App，必须把 credit 与使用规范作为发布门槛**。citeturn34search0turn34search2turn34search1turn35search0
 
-官方还有单独的“图片利用规则”“图片利用限制”页面，说明 Affiliate 对图片使用是有专门规则的。因此，在元数据底座设计里，最保守的做法不是大规模再分发图片文件，而是优先存储图片 URL、尺寸、校验信息与抓取时间；如确需镜像缓存，也应该把它做成可关闭功能，并在上线前完成一次基于官方规则的法务/合规复核。这里最后一句是工程建议。citeturn34search3turn34search4
+官方还有单独的“图片利用规则”“图片利用限制”页面，说明 Affiliate 对图片使用是有专门规则的。因此，在元数据底座设计里，最保守的做法不是大规模再分发图片文件，而是优先存储图片 URL、尺寸、校验信息与抓取时间；如确需镜像缓存，也适合把它做成可关闭功能，并在上线前完成一次基于官方规则的发布复核。这里最后一句是工程建议。citeturn34search3turn34search4
 
-另外，`affiliate.dmm.com` 的 `robots.txt` 对多类参考页、广告工具页和部分 archive 路径标了 `Disallow`。这并不否定 API 本身的合法使用，因为官方本来就提供了机器使用的 API 接口；但它说明 **不应把 HTML 页面抓取当成主线路**。对 JAV-MetadataHub 来说，正确路径就是“优先 API，不爬前台 HTML”。citeturn33view0turn10search2
+另外，`affiliate.dmm.com` 的 `robots.txt` 对多类参考页、广告工具页和部分 archive 路径标了 `Disallow`。这并不否定 API 本身的合法使用，因为官方本来就提供了机器使用的 API 接口；但它说明 **API 比 HTML 页面更适合作为主线路**。对 JAV-MetadataHub 来说，推荐路径就是“优先 API，HTML 仅作证据核验”。citeturn33view0turn10search2
 
 ### 推荐给 Codex 的实现任务清单
 
 下面这份清单可以直接拆成 issue 或 PR 任务：
 
 - 实现 `FanzaClient` 基础 HTTP 层：认证参数注入、超时、重试、限流、错误分类。依据是官方必须携带 `api_id` / `affiliate_id`，且帮助文档确认存在时间窗内请求限制。citeturn34search0turn34search7turn48search0turn49search0
-- 实现 `FloorList` discovery，并把 `site/service/floor/floor_id` 持久化到本地配置表，禁止业务代码硬编码 `videoa/43`。citeturn16search0turn41search0turn16search7
+- 实现 `FloorList` discovery，并把 `site/service/floor/floor_id` 持久化到本地配置表，避免业务代码硬编码 `videoa/43`。citeturn16search0turn41search0turn16search7
 - 实现 `ItemListParams` 强类型模型，覆盖 `site/service/floor/keyword/hits/offset/sort/gte_date/lte_date/output/cid/article/article_id/mono_stock/callback`。citeturn19view0turn52view1
 - 实现 `DateWindowCollector`：月窗扫描、超量自动切窗、`offset` 深翻、断点续跑。citeturn21search0turn30search0turn38search4
 - 实现 `ItemParser`：把 `content_id/product_id/maker_product/title/date/volume/iteminfo/review/imageURL/sampleImageURL` 映射到领域对象与 observation。citeturn14view1turn14view2turn15view2turn27view0turn27view1
 - 定义 `source_records` 与 `work_external_ids` 写入策略：`source_key=content_id`，external IDs 至少包含 `dmm_content_id`、`dmm_product_id`、`maker_product_code`。citeturn19view0turn27view0turn27view2
 - 实现 `GenreSearch`、`MakerSearch`、`SeriesSearch`、`ActressSearch` 的维表同步 job。citeturn10search9turn10search16turn10search13turn51view1
 - 增加 `site value compatibility`：默认 `FANZA`，但保留历史 `DMM.R18` 兼容配置项。citeturn44view0turn21search0turn38search1
-- 增加发布层合规检查：若项目启用对外展示，则必须配置 DMM credit；若启用图片镜像，则必须显式确认图片规则。citeturn34search1turn35search0turn34search3turn34search4
+- 增加发布层来源使用检查：若项目启用对外展示，则配置 DMM credit；若启用图片镜像，则显式确认图片规则。citeturn34search1turn35search0turn34search3turn34search4
 - 在 CI 中加入一条“JP 网络验证”流水线，因为本次调研环境下官方 guide / credit / ID 页面存在区域不可用提示。citeturn55view0turn55view1turn55view2
 
 ### 最终推荐架构

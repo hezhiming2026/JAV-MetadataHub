@@ -1,12 +1,11 @@
 # AGENTS.md
 
-## Project
+## 项目
 
-JAV-MetadataHub is a public metadata foundation for Japanese adult video metadata analytics.
+JAV-MetadataHub 是一个面向日本成人成人视频元数据分析的公开元数据底座。
 
-The project only handles public metadata. It must not implement or assist with video downloading, torrent/magnet indexing, piracy, DRM bypassing, paywall bypassing, captcha bypassing, account sharing, or private personal information collection.
 
-## Tech Stack
+## 技术栈
 
 * Python 3.12+
 * PostgreSQL 15+
@@ -23,9 +22,9 @@ The project only handles public metadata. It must not implement or assist with v
 * mypy
 * DuckDB / Parquet
 
-## Core Architecture
+## 核心架构
 
-All external metadata must flow through this path:
+所有外部元数据必须经过以下路径：
 
 ```text
 external source
@@ -41,66 +40,59 @@ canonical entity tables
 gold exports / API
 ```
 
-## Core Rules
+## 核心规则
 
-1. Save raw source data to `source_records` before normalization.
-2. Save uncertain or conflicting fields to `field_observations`.
-3. Do not blindly overwrite canonical fields.
-4. Preserve source, confidence, source record ID, and observed time for every field.
-5. Entity resolution must be conservative.
-6. Do not merge people only by name.
-7. Do not crawl third-party HTML sources in V1.
-8. Do not download images in V1; store URLs only.
-9. Do not implement video downloading or magnet/torrent features.
-10. All API clients must have rate limiting, retries, logging, and tests.
-11. Do not call real external APIs in tests.
-12. Do not log secrets.
-13. Do not commit `.env`.
+1. 在标准化之前，将原始来源数据保存到 `source_records`。
+2. 将不确定或存在冲突的字段保存到 `field_observations`。
+3. 不要盲目覆盖 canonical 字段。
+4. 为每个字段保留来源、置信度、来源记录 ID 和观测时间。
+5. 实体解析必须保持保守。
+6. 不得仅根据姓名合并人物。
+7. V1 阶段不得爬取第三方 HTML 来源。
+8. V1 阶段不得下载图片；只存储 URL。
+10. 所有 API client 都必须具备速率限制、重试、日志和测试。
+11. 测试中不得调用真实外部 API。
+12. 不得记录密钥。
+13. 不得提交 `.env`。
 
-## V1 Scope
+## V1 范围
 
-V1 should implement:
+V1 应实现：
 
-* project structure
+* 项目结构
 * PostgreSQL schema
 * Alembic migrations
 * source records
 * field observations
-* code normalization
+* 番号标准化
 * R18.dev dump importer
 * FANZA / DMM API client
-* basic parser and ingestion flow
-* conservative entity resolution
+* 基础 parser 和 ingestion flow
+* 保守的实体解析
 * CSV / Parquet export
-* FastAPI read-only API
+* FastAPI 只读 API
 
-V1 should not implement:
+V1 不应实现：
 
-* JavDB full crawler
-* JavBus full crawler
-* JavLibrary full crawler
-* Cloudflare bypass
-* captcha bypass
-* paywall bypass
-* image downloading
-* video downloading
-* torrent/magnet/ed2k support
+* JavDB 全量爬虫
+* JavBus 全量爬虫
+* JavLibrary 全量爬虫
 
-## Coding Rules
+## 编码规则
 
-* Use SQLAlchemy 2.x typed declarative models.
-* Use Pydantic v2 models for DTOs and API responses.
-* Use async `httpx` for external API clients.
-* Use `tenacity` for retry logic.
-* Keep parsers deterministic and testable.
-* Add tests for normalizers, parsers, repositories, services, and API routes.
-* Use fixtures and mocked responses for tests.
-* Keep business logic out of route handlers.
-* Keep source-specific parsing inside parser/provider modules.
+* 使用 SQLAlchemy 2.x typed declarative models。
+* 使用 Pydantic v2 models 作为 DTO 和 API responses。
+* 外部 API client 使用 async `httpx`。
+* 使用 `tenacity` 实现重试逻辑。
+* parser 应保持确定性，并且易于测试。
+* 为 normalizers、parsers、repositories、services 和 API routes 添加测试。
+* 测试使用 fixtures 和 mocked responses。
+* 不要将业务逻辑放在 route handlers 中。
+* 将特定来源的解析逻辑保留在 parser/provider modules 中。
 
-## Testing
+## 测试
 
-Run when applicable:
+适用时运行：
 
 ```bash
 pytest
@@ -109,30 +101,15 @@ ruff format --check .
 mypy src
 ```
 
-If a command cannot run, explain why and provide the closest verification performed.
+如果某个命令无法运行，说明原因，并提供已执行的最接近验证方式。
 
-## Prohibited Features
 
-Do not add:
+## 预期任务输出
 
-* video downloaders
-* torrent, magnet, BT, or ed2k collection
-* piracy resource indexing
-* DRM bypass
-* paywall bypass
-* captcha bypass
-* account sharing
-* private personal data scraping
-* facial recognition
-* real identity inference
-* scraping of non-public personal information
+每个任务都应提供：
 
-## Expected Task Output
-
-For every task, provide:
-
-1. Summary of changes
-2. Files changed
-3. Tests run
-4. Known limitations
-5. Suggested next task
+1. 变更摘要
+2. 修改的文件
+3. 运行的测试
+4. 已知限制
+5. 建议的下一个任务

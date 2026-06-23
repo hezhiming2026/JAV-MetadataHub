@@ -1,21 +1,20 @@
-# Codex Tasks
+# Codex 任务拆解
 
-This document is the execution entrypoint for future engineering work. It is derived from `README.md`, `AGENTS.md`, `docs/architecture.md`, `docs/schema.md`, `docs/data_sources.md`, and `docs/compliance.md`.
+本文档是后续工程任务的执行入口，来源于 `README.md`、`AGENTS.md`、`docs/architecture.md`、`docs/schema.md` 和 `docs/data_sources.md`。
 
-Each task must preserve the project boundary: public metadata only, no video downloading, no torrent/magnet/BT/ed2k, no piracy indexing, no access-control bypass, no private personal data collection, no facial recognition, and no real identity inference.
+任务拆解强调小步交付、证据链入库、可测试 parser 和保守实体解析。所有外部来源数据先进入 `source_records`，字段级结论写入 `field_observations`，canonical 更新通过明确服务逻辑完成。
 
-## Task 1: Initialize Project Structure
+## Task 1：初始化项目结构
 
-**Task goal:** Create the Python project skeleton without implementing business logic.
+**任务目标：** 创建 Python 项目骨架，不实现业务逻辑。
 
-**Input files:**
+**输入文件：**
 
 - `README.md`
 - `AGENTS.md`
 - `docs/architecture.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `pyproject.toml`
 - `.env.example`
@@ -23,280 +22,235 @@ Each task must preserve the project boundary: public metadata only, no video dow
 - `docker-compose.yml`
 - `src/jav_metadatahub/__init__.py`
 - `tests/`
-- optional package placeholder modules needed for import checks
+- import check 需要的可选 package placeholder modules
 
-**Requirements:**
+**需求：**
 
-- Use Python 3.12+.
-- Configure project metadata, dependencies, and dev dependencies.
-- Include SQLAlchemy, Alembic, Pydantic v2, pydantic-settings, httpx, tenacity, FastAPI, Typer, pytest, ruff, mypy, DuckDB, and Parquet-related dependencies.
-- Add a safe `.env.example` with no secrets.
-- Make `python -c "import jav_metadatahub"` work.
-- Keep business logic out of this task.
+- 使用 Python 3.12+。
+- 配置项目 metadata、runtime dependencies 和 dev dependencies。
+- 包含 SQLAlchemy、Alembic、Pydantic v2、pydantic-settings、httpx、tenacity、FastAPI、Typer、pytest、ruff、mypy、DuckDB 和 Parquet 相关依赖。
+- 添加不含真实凭证的 `.env.example`。
+- 让 `python -c "import jav_metadatahub"` 可以运行。
+- 本任务只做骨架，不实现 collectors、parsers、importers、API routes 或 database models。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not implement collectors, parsers, importers, API routes, or database models.
-- Do not add real credentials.
-- Do not call external APIs.
+- `pip install -e ".[dev]"` 或选定的安装命令可以运行。
+- `python -c "import jav_metadatahub"` 成功。
+- `ruff check .`、`ruff format --check .` 和 `pytest` 可针对空骨架运行。
 
-**Acceptance standards:**
+## Task 2：数据库模型和 Alembic Migration
 
-- `pip install -e ".[dev]"` or the chosen documented install command can run.
-- `python -c "import jav_metadatahub"` succeeds.
-- `ruff check .`, `ruff format --check .`, and `pytest` can run against the empty skeleton.
+**任务目标：** 将 `docs/schema.md` 中的 schema 实现为 SQLAlchemy 2.x typed models 和初始 Alembic migration。
 
-## Task 2: Database Models and Alembic Migration
-
-**Task goal:** Implement the schema from `docs/schema.md` as SQLAlchemy 2.x typed models and an initial Alembic migration.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
 - `docs/architecture.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/db/base.py`
 - `src/jav_metadatahub/db/session.py`
-- `src/jav_metadatahub/db/models.py` or focused model modules
+- `src/jav_metadatahub/db/models.py` 或拆分后的 model modules
 - `alembic.ini`
 - `alembic/env.py`
 - `alembic/versions/<initial_revision>.py`
 - model/import tests
 
-**Requirements:**
+**需求：**
 
-- Create the `javhub` schema.
-- Implement all core tables listed in `docs/schema.md`.
-- Preserve primary keys, foreign keys, unique constraints, confidence fields, provenance fields, and indexes.
-- Use SQLAlchemy 2.x typed declarative models.
-- Read `DATABASE_URL` via pydantic-settings.
+- 创建 `javhub` schema。
+- 实现 `docs/schema.md` 列出的核心表。
+- 保留 primary keys、foreign keys、unique constraints、confidence fields、provenance fields 和 indexes。
+- 使用 SQLAlchemy 2.x typed declarative models。
+- 通过 pydantic-settings 读取 `DATABASE_URL`。
+- 本任务不添加 source-specific collection/parsing 逻辑。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not add source-specific scraping logic.
-- Do not connect to real external APIs.
-- Do not model media downloading.
+- Alembic 可在测试数据库中创建全部表。
+- Model imports 通过。
+- Schema tests 覆盖代表性 constraints 和 indexes。
 
-**Acceptance standards:**
+## Task 3：番号标准化模块
 
-- Alembic can create all tables in a test database.
-- Model imports pass.
-- Schema tests confirm representative constraints and indexes.
+**任务目标：** 实现确定性的 JAV code normalization。
 
-## Task 3: Code Normalization Module
-
-**Task goal:** Implement deterministic JAV code normalization.
-
-**Input files:**
+**输入文件：**
 
 - `docs/architecture.md`
 - `docs/schema.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/normalizers/code.py`
 - `tests/test_normalize_code.py`
 
-**Requirements:**
+**需求：**
 
-- Implement `normalize_code(code: str | None)`.
-- Return original value, compact normalized value, prefix, and numeric component.
-- Handle formats such as `ABP-477`, `abp477`, `ABP_477`, `ABP 477`, `ABP00477`, and `h_123abc001`.
-- Keep the function deterministic and side-effect free.
+- 实现 `normalize_code(code: str | None)`。
+- 返回 original value、compact normalized value、prefix 和 numeric component。
+- 覆盖 `ABP-477`、`abp477`、`ABP_477`、`ABP 477`、`ABP00477`、`h_123abc001` 等格式。
+- 函数保持 deterministic 和 side-effect free。
+- 本任务不查询外部来源。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not query external sources.
-- Do not infer identity beyond code normalization.
+- 参数化测试覆盖常见分隔符、大小写、zero padding、empty input 和复杂 prefix。
+- Type checking 无明显错误。
 
-**Acceptance standards:**
+## Task 4：`source_records` Repository
 
-- Parameterized tests cover common separators, casing, zero padding, empty input, and complex prefixes.
-- Type checking reports no obvious errors.
+**任务目标：** 实现 raw source evidence 的 repository 操作。
 
-## Task 4: `source_records` Repository
-
-**Task goal:** Implement repository operations for raw source evidence.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/repositories/source_records.py`
 - repository tests
 
-**Requirements:**
+**需求：**
 
-- Support create, get by ID, get by `(source, source_key, record_type)`, and upsert.
-- Preserve `raw_json`, `raw_html`, `raw_text`, `http_status`, `fetch_status`, `error_message`, `parser_version`, `checksum`, and `collector_run_id`.
-- Make failed and not-found records storable.
+- 支持 create、get by ID、get by `(source, source_key, record_type)` 和 upsert。
+- 保留 `raw_json`、`raw_html`、`raw_text`、`http_status`、`fetch_status`、`error_message`、`parser_version`、`checksum` 和 `collector_run_id`。
+- 支持保存 failed 和 not-found records。
+- Repository 只负责持久化，不解析 source payloads。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not parse source payloads in the repository.
-- Do not discard raw evidence.
+- 重复 upsert 更新同一 `(source, source_key, record_type)` row。
+- Failed records 可以保存和读取。
+- 测试使用本地 fixtures。
 
-**Acceptance standards:**
+## Task 5：`field_observations` Service
 
-- Repeated upsert updates the same `(source, source_key, record_type)` row.
-- Failed records can be stored and retrieved.
-- Tests use local fixtures only.
+**任务目标：** 实现字段级 observation 创建和查询 helper。
 
-## Task 5: `field_observations` Service
-
-**Task goal:** Implement field-level observation creation and query helpers.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/services/observations.py`
 - observation tests
 
-**Requirements:**
+**需求：**
 
-- Create observations for entity type, entity ID, field name, field value, source, source record ID, confidence, and observed time.
-- Support querying observations by entity, field, and source.
-- Keep `field_value` as structured JSON-compatible data and `field_value_text` for search/debugging.
-- Support observation statuses such as active, rejected, and superseded.
+- 为 entity type、entity ID、field name、field value、source、source record ID、confidence 和 observed time 创建 observations。
+- 支持按 entity、field 和 source 查询 observations。
+- `field_value` 保存 JSON-compatible structured data，`field_value_text` 用于搜索和调试。
+- 支持 active、rejected、superseded 等 observation statuses。
+- Service 不直接改写 canonical 字段；canonical 提升由 ingestion/resolution 逻辑负责。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not directly overwrite canonical fields.
-- Do not promote supplemental source values without explicit resolution logic.
+- 测试验证 observation creation、retrieval 和 status handling。
+- 同一 entity field 可以共存冲突 observations。
 
-**Acceptance standards:**
+## Task 6：R18.dev Dump Importer
 
-- Tests verify observation creation, retrieval, and status handling.
-- Conflicting observations can coexist for the same entity field.
+**任务目标：** 将 R18.dev dump 数据导入 `source_records` 和 observations，并用 fixtures 覆盖测试。
 
-## Task 6: R18.dev Dump Importer
-
-**Task goal:** Import R18.dev dump data into `source_records` and observations without relying on live web APIs in tests.
-
-**Input files:**
+**输入文件：**
 
 - `docs/source_specs/r18_dump.md`
 - `docs/schema.md`
 - `docs/data_sources.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/importers/r18_dump_importer.py`
 - `src/jav_metadatahub/parsers/r18_parser.py`
 - R18 fixtures and tests
 
-**Requirements:**
+**需求：**
 
-- Treat R18.dev as a structured dump source.
-- Preserve dump version, import time, source key, and source record ID.
-- Store imported records in `source_records` before normalization.
-- Map work, people, companies, series, tags, image URLs, and external IDs according to the source spec.
-- Write uncertain or conflicting values to `field_observations`.
+- 将 R18.dev 视为 structured dump source。
+- 保留 dump version、import time、source key 和 source record ID。
+- 导入记录先写入 `source_records`，再进入 normalization。
+- 按 source spec 映射 works、people、companies、series、tags、image URLs 和 external IDs。
+- 不确定或冲突值写入 `field_observations`。
+- 本任务使用 dump/serialized fixture，不依赖 live source。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not scrape R18 HTML.
-- Do not call R18 live endpoints in tests.
-- Do not download images.
+- Fixture import 创建 source records。
+- Parsed fields 通过 ingestion logic 创建 observations 和 canonical candidates。
+- 同一 source key 和 record type 重导保持幂等。
 
-**Acceptance standards:**
+## Task 7：FANZA/DMM API Client
 
-- Fixture import creates source records.
-- Parsed fields create observations and canonical candidates through ingestion logic.
-- Re-import is idempotent for the same source key and record type.
+**任务目标：** 实现 FANZA/DMM API metadata calls 的 async client。
 
-## Task 7: FANZA/DMM API Client
-
-**Task goal:** Implement a safe async client for FANZA/DMM API metadata calls.
-
-**Input files:**
+**输入文件：**
 
 - `docs/source_specs/fanza_dmm_api.md`
 - `docs/data_sources.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/collectors/fanza_client.py`
 - client tests using mocked HTTP
 
-**Requirements:**
+**需求：**
 
-- Use `httpx.AsyncClient`.
-- Read base URL, API ID, and affiliate ID from settings.
-- Implement FloorList, ItemList, ActressSearch, MakerSearch, GenreSearch, and SeriesSearch methods as specified.
-- Attach required auth/query parameters.
-- Use tenacity retries, conservative rate limiting, and structured logging.
-- Redact secrets in logs.
+- 使用 `httpx.AsyncClient`。
+- 从 settings 读取 base URL、API ID 和 affiliate ID。
+- 实现 FloorList、ItemList、ActressSearch、MakerSearch、GenreSearch 和 SeriesSearch。
+- 附加所需 auth/query parameters。
+- 使用 tenacity retries、conservative rate limiting 和 structured logging。
+- 日志中对 secret-like values 做 redaction。
+- 测试使用 mocked HTTP。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not call the real API in tests.
-- Do not log secrets.
-- Do not implement media downloading.
+- Mocked tests 验证 request paths、parameters、pagination values、retry behavior 和 secret redaction。
 
-**Acceptance standards:**
+## Task 8：FANZA Collector
 
-- Mocked tests verify request paths, parameters, pagination values, retry behavior, and secret redaction.
+**任务目标：** 采集 FANZA/DMM API responses，并将 raw payloads 保存到 `source_records`。
 
-## Task 8: FANZA Collector
-
-**Task goal:** Collect FANZA/DMM API responses and store raw payloads in `source_records`.
-
-**Input files:**
+**输入文件：**
 
 - `docs/source_specs/fanza_dmm_api.md`
 - `docs/schema.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/collectors/fanza_collector.py`
 - collector tests
 
-**Requirements:**
+**需求：**
 
-- Use `FanzaClient`.
-- Support date-window collection and pagination.
-- Create and update `collector_runs`.
-- Save each raw page or detail payload before parsing.
-- Support dry-run and max-pages controls for tests.
+- 使用 `FanzaClient`。
+- 支持 date-window collection 和 pagination。
+- 创建并更新 `collector_runs`。
+- 每个 raw page 或 detail payload 在解析前保存。
+- 支持 dry-run 和 max-pages controls 以便测试。
+- 解析和 canonical 写入由后续 parser/ingestion service 负责。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not parse directly into canonical tables.
-- Do not call real APIs in tests.
-- Do not bypass rate limits.
+- Mocked multi-page collection 存储预期 `source_records`。
+- Collector run status 和 counters 被更新。
+- Dry-run 不产生 database writes。
 
-**Acceptance standards:**
+## Task 9：Parser + Ingestion Service
 
-- Mocked multi-page collection stores expected `source_records`.
-- Collector run status and counters are updated.
-- Dry-run performs no database writes.
+**任务目标：** 将 source records 解析为内部 DTOs，创建 observations，并通过明确规则更新 canonical entities。
 
-## Task 9: Parser + Ingestion Service
-
-**Task goal:** Parse source records into internal DTOs, create observations, and update canonical entities through explicit rules.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
 - `docs/source_specs/r18_dump.md`
 - `docs/source_specs/fanza_dmm_api.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/parsers/base.py`
 - `src/jav_metadatahub/parsers/fanza_parser.py`
@@ -304,105 +258,88 @@ Each task must preserve the project boundary: public metadata only, no video dow
 - `src/jav_metadatahub/services/ingestion.py`
 - parser and ingestion tests
 
-**Requirements:**
+**需求：**
 
-- Parse works, external IDs, people, companies, series, tags, and media URLs.
-- Store all source claims as observations.
-- Create or reuse canonical entities through repositories/services.
-- Preserve source record ID and confidence.
-- Store media URLs only.
+- 解析 works、external IDs、people、companies、series、tags 和 media URLs。
+- 将所有 source claims 保存为 observations。
+- 通过 repositories/services 创建或复用 canonical entities。
+- 保留 source record ID 和 confidence。
+- media assets 在 V1 保存 URL metadata。
+- 避免盲目覆盖 canonical 字段；people merge 依赖明确 identity evidence。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not blindly overwrite canonical fields.
-- Do not download images.
-- Do not merge people by name only.
+- Fixture source records 产生预期 entities、relationships 和 observations。
+- 重复 ingestion 对 relationships 和 external IDs 保持幂等。
+- Conflicts 保留在 observations。
 
-**Acceptance standards:**
+## Task 10：实体解析
 
-- Fixture source records produce expected entities, relationships, and observations.
-- Repeated ingestion is idempotent for relationships and external IDs.
-- Conflicts remain visible in observations.
+**任务目标：** 实现保守的 V1 entity resolution rules。
 
-## Task 10: Entity Resolution
-
-**Task goal:** Implement conservative V1 entity resolution rules.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
 - `docs/architecture.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/services/entity_resolution.py`
 - entity resolution tests
 
-**Requirements:**
+**需求：**
 
-- Match works by same source external ID, FANZA/DMM content ID, or `code_norm + maker + release_date`.
-- Match people automatically only by same source person external ID.
-- Match companies/series/tags only with compatible source/type context.
-- Create `entity_match_candidates` for ambiguous matches.
-- Record accepted merges in `entity_merge_logs`.
+- works 可按 same source external ID、FANZA/DMM content ID 或 `code_norm + maker + release_date` 匹配。
+- people 自动匹配只使用 same source person external ID。
+- companies/series/tags 只在 compatible source/type context 下匹配。
+- 为 ambiguous matches 创建 `entity_match_candidates`。
+- accepted merges 记录到 `entity_merge_logs`。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not merge people only by name.
-- Do not auto-merge ambiguous works, aliases, or companies.
+- Tests prove safe auto-match cases。
+- Tests prove ambiguous cases create candidates。
+- Tests prove same-name people are routed to candidates rather than auto-merged。
 
-**Acceptance standards:**
+## Task 11：CSV / Parquet Exporter
 
-- Tests prove safe auto-match cases.
-- Tests prove ambiguous cases create candidates.
-- Tests prove same-name people are not auto-merged.
+**任务目标：** 为下游分析导出 Silver 和 Gold datasets。
 
-## Task 11: CSV / Parquet Exporter
-
-**Task goal:** Export Silver and Gold datasets for downstream analytics.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
 - `docs/architecture.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/exporters/csv_exporter.py`
 - `src/jav_metadatahub/exporters/parquet_exporter.py`
 - export CLI command
 - exporter tests
 
-**Requirements:**
+**需求：**
 
-- Export core Silver tables and `gold_work_flat`.
-- Support CSV and Parquet.
-- Use configured `EXPORT_DIR`.
-- Handle empty tables gracefully.
+- 导出 core Silver tables 和 `gold_work_flat`。
+- 支持 CSV 和 Parquet。
+- 使用配置中的 `EXPORT_DIR`。
+- 空表导出保持 graceful behavior。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not export raw secrets or credentials.
-- Do not export downloaded media.
+- Tests 在 temporary directory 生成 CSV 和 Parquet。
+- Empty-table exports 不崩溃。
+- Exported columns 匹配 schema 文档。
 
-**Acceptance standards:**
+## Task 12：FastAPI 只读 API
 
-- Tests generate CSV and Parquet in a temporary directory.
-- Empty-table exports do not crash.
-- Exported columns match documented schema expectations.
+**任务目标：** 在 canonical entities 和 observations 之上实现 read-only API routes。
 
-## Task 12: FastAPI Read-Only API
-
-**Task goal:** Implement read-only API routes over canonical entities and observations.
-
-**Input files:**
+**输入文件：**
 
 - `docs/schema.md`
 - `docs/architecture.md`
-- `docs/compliance.md`
 
-**Output files:**
+**输出文件：**
 
 - `src/jav_metadatahub/api/main.py`
 - `src/jav_metadatahub/api/dependencies.py`
@@ -410,31 +347,25 @@ Each task must preserve the project boundary: public metadata only, no video dow
 - Pydantic response schemas
 - API tests
 
-**Requirements:**
+**需求：**
 
-- Implement `GET /health`.
-- Implement read-only work, person, company, series, tag, observation, and source routes listed in architecture docs.
-- Use Pydantic v2 response models.
-- Keep business logic out of route handlers.
-- Support pagination where list routes are exposed.
+- 实现 `GET /health`。
+- 实现 architecture docs 中列出的 read-only work、person、company、series、tag、observation 和 source routes。
+- 使用 Pydantic v2 response models。
+- route handlers 不承载业务逻辑。
+- list routes 支持 pagination。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not add write endpoints in V1.
-- Do not expose secrets.
-- Do not add media download endpoints.
+- `/health` 返回 OK status。
+- Route tests 使用 test database 通过。
+- API surface 保持 read-only。
 
-**Acceptance standards:**
+## Task 13：测试和文档
 
-- `/health` returns an OK status.
-- Route tests pass with a test database.
-- API is read-only.
+**任务目标：** 补齐验证覆盖，并保持文档与实现一致。
 
-## Task 13: Tests and Docs
-
-**Task goal:** Complete verification coverage and keep documentation aligned with implementation.
-
-**Input files:**
+**输入文件：**
 
 - `README.md`
 - `AGENTS.md`
@@ -442,30 +373,23 @@ Each task must preserve the project boundary: public metadata only, no video dow
 - source specs
 - implemented code and tests
 
-**Output files:**
+**输出文件：**
 
-- Updated README and docs where behavior differs.
-- Additional tests for uncovered normalizers, parsers, repositories, services, exporters, and API routes.
-- Test fixtures with mocked responses only.
+- 行为发生变化时更新 README 和 docs。
+- 为 normalizers、parsers、repositories、services、exporters 和 API routes 补充测试。
+- 使用 mocked responses 的 test fixtures。
 
-**Requirements:**
+**需求：**
 
-- Run `pytest`.
-- Run `ruff check .`.
-- Run `ruff format --check .`.
-- Run `mypy src`.
-- Explain any command that cannot run and provide closest verification.
-- Keep docs explicit about V1/V2/V3 boundaries.
+- 运行 `pytest`。
+- 运行 `ruff check .`。
+- 运行 `ruff format --check .`。
+- 运行 `mypy src`。
+- 不能运行的命令说明原因，并提供最接近的验证方式。
+- 保持 docs 对 V1/V2/V3 边界的描述清晰。
 
-**Prohibited:**
+**验收标准：**
 
-- Do not add live external API tests.
-- Do not commit `.env`.
-- Do not weaken compliance boundaries to make tests pass.
-
-**Acceptance standards:**
-
-- Verification commands pass or documented blockers are explicit.
-- README links to core docs.
-- Source specs remain consistent with implementation.
-- Compliance policy remains intact.
+- Verification commands 通过，或 blockers 明确。
+- README 链接到核心 docs。
+- Source specs 与实现保持一致。

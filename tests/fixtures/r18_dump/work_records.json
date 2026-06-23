@@ -1,0 +1,33 @@
+{
+  "dump_version": "r18dotdev_dump_2026-06-22",
+  "records": [
+    {
+      "content_id": "r18-content-001",
+      "dvd_id": "ABP-477",
+      "title_ja": "日本語タイトル",
+      "title_en": "English Title",
+      "release_date": "2015-05-01",
+      "runtime_minutes": "120",
+      "actresses": [" Alice ", null, "", "  ", "Beth"],
+      "directors": ["Director A"],
+      "maker": "Maker A",
+      "label": "Label A",
+      "series": "Series A",
+      "categories": ["Drama", " Drama ", null, ""],
+      "tags": ["Tag A", "  "],
+      "jacket_url": " https://example.test/jacket.jpg ",
+      "cover_url": "https://example.test/jacket.jpg",
+      "gallery_urls": ["https://example.test/1.jpg", " ", 42],
+      "sample_images": ["https://example.test/1.jpg", "https://example.test/2.jpg"],
+      "description": "R18 fixture description",
+      "url": "https://example.test/work/r18-content-001"
+    },
+    {
+      "content_id": "   ",
+      "dvd_id": "IPX-001",
+      "japanese_title": "別タイトル",
+      "runtime_minutes": "not-a-number",
+      "image_url": "https://example.test/ipx001.jpg"
+    }
+  ]
+}
