@@ -145,6 +145,47 @@ def test_list_by_source_filters_by_source_field_and_status() -> None:
     }
 
 
+def test_list_page_filters_counts_and_orders_results() -> None:
+    repository, session = make_repository()
+    expected = [
+        FieldObservation(entity_type="fanza_work", entity_id=1, field_name="title", source="fanza")
+    ]
+    session.scalar.return_value = 3
+    session.scalars.return_value.all.return_value = expected
+
+    result, total = repository.list_page(
+        entity_type=" fanza_work ",
+        entity_id=1,
+        field_name=" title ",
+        limit=20,
+        offset=5,
+    )
+
+    assert result == expected
+    assert total == 3
+    count_statement = session.scalar.call_args.args[0]
+    data_statement = session.scalars.call_args.args[0]
+    count_sql, count_params = compile_sql(count_statement)
+    sql, params = compile_sql(data_statement)
+    assert "count(*)" in count_sql
+    assert count_params == {
+        "entity_type_1": "fanza_work",
+        "entity_id_1": 1,
+        "field_name_1": "title",
+    }
+    assert "field_observations.entity_type = %(entity_type_1)s" in sql
+    assert "field_observations.entity_id = %(entity_id_1)s" in sql
+    assert "field_observations.field_name = %(field_name_1)s" in sql
+    assert "ORDER BY javhub.field_observations.created_at DESC" in sql
+    assert params == {
+        "entity_type_1": "fanza_work",
+        "entity_id_1": 1,
+        "field_name_1": "title",
+        "param_1": 20,
+        "param_2": 5,
+    }
+
+
 def test_find_duplicate_matches_active_without_status_in_fact_key() -> None:
     repository, session = make_repository()
     expected = FieldObservation(entity_type="work", entity_id=1, field_name="title", source="r18")

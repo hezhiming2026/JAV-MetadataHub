@@ -132,3 +132,20 @@ class FieldObservationService:
             rejection_reason=rejection_reason,
             observed_at=observed_at,
         )
+
+    def list_observations(
+        self,
+        *,
+        entity_type: str | None = None,
+        entity_id: int | None = None,
+        field_name: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[FieldObservation], int]:
+        return self.repository.list_page(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field_name=field_name,
+            limit=limit,
+            offset=offset,
+        )

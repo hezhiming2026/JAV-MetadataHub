@@ -140,6 +140,47 @@ class SourceRecordRepository:
         )
         return list(self.session.scalars(statement).all())
 
+    def list_page(
+        self,
+        limit: int,
+        offset: int,
+        *,
+        source: str | None = None,
+        record_type: str | None = None,
+        fetch_status: str | None = None,
+    ) -> tuple[list[SourceRecord], int]:
+        cleaned_limit = _validate_positive_int(limit, "limit")
+        cleaned_offset = _validate_non_negative_int(offset, "offset")
+
+        filters = []
+        if source is not None:
+            filters.append(SourceRecord.source == _clean_required_string(source, "source"))
+        if record_type is not None:
+            filters.append(
+                SourceRecord.record_type == _clean_required_string(record_type, "record_type")
+            )
+        if fetch_status is not None:
+            filters.append(
+                SourceRecord.fetch_status == _clean_required_string(fetch_status, "fetch_status")
+            )
+
+        count_statement = select(func.count()).select_from(SourceRecord)
+        statement = select(SourceRecord)
+        if filters:
+            count_statement = count_statement.where(*filters)
+            statement = statement.where(*filters)
+
+        total = self.session.scalar(count_statement) or 0
+        statement = (
+            statement.order_by(
+                SourceRecord.created_at.desc(),
+                SourceRecord.id.desc(),
+            )
+            .limit(cleaned_limit)
+            .offset(cleaned_offset)
+        )
+        return list(self.session.scalars(statement).all()), total
+
     def upsert(
         self,
         *,

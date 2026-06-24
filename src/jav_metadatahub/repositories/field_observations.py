@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import bindparam, select
+from sqlalchemy import bindparam, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
@@ -42,6 +42,12 @@ def _validate_optional_positive_int(value: int | None, field_name: str) -> int |
     if value is None:
         return None
     return _validate_positive_int(value, field_name)
+
+
+def _validate_non_negative_int(value: int, field_name: str) -> int:
+    if isinstance(value, bool) or value < 0:
+        raise ValueError(f"{field_name} must be a non-negative integer")
+    return value
 
 
 def _normalize_confidence(value: Decimal | str | int | float) -> Decimal:
@@ -198,6 +204,49 @@ class FieldObservationRepository:
             FieldObservation.id.desc(),
         )
         return list(self.session.scalars(statement).all())
+
+    def list_page(
+        self,
+        *,
+        entity_type: str | None = None,
+        entity_id: int | None = None,
+        field_name: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[FieldObservation], int]:
+        cleaned_limit = _validate_positive_int(limit, "limit")
+        cleaned_offset = _validate_non_negative_int(offset, "offset")
+
+        filters = []
+        if entity_type is not None:
+            filters.append(
+                FieldObservation.entity_type == _clean_required_string(entity_type, "entity_type")
+            )
+        if entity_id is not None:
+            filters.append(
+                FieldObservation.entity_id == _validate_positive_int(entity_id, "entity_id")
+            )
+        if field_name is not None:
+            filters.append(
+                FieldObservation.field_name == _clean_required_string(field_name, "field_name")
+            )
+
+        count_statement = select(func.count()).select_from(FieldObservation)
+        statement = select(FieldObservation)
+        if filters:
+            count_statement = count_statement.where(*filters)
+            statement = statement.where(*filters)
+
+        total = self.session.scalar(count_statement) or 0
+        statement = (
+            statement.order_by(
+                FieldObservation.created_at.desc(),
+                FieldObservation.id.desc(),
+            )
+            .limit(cleaned_limit)
+            .offset(cleaned_offset)
+        )
+        return list(self.session.scalars(statement).all()), total
 
     def find_duplicate(
         self,

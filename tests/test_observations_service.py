@@ -196,6 +196,29 @@ def test_record_observation_allows_conflicting_values_to_coexist() -> None:
     assert repository.create.call_args_list[1].kwargs["field_value"] == 120
 
 
+def test_list_observations_delegates_to_repository() -> None:
+    service, repository = make_service()
+    expected = [FieldObservation(entity_type="work", entity_id=1, field_name="title", source="r18")]
+    repository.list_page.return_value = (expected, 1)
+
+    result = service.list_observations(
+        entity_type="work",
+        entity_id=1,
+        field_name="title",
+        limit=20,
+        offset=5,
+    )
+
+    assert result == (expected, 1)
+    repository.list_page.assert_called_once_with(
+        entity_type="work",
+        entity_id=1,
+        field_name="title",
+        limit=20,
+        offset=5,
+    )
+
+
 @pytest.mark.parametrize(
     "field_name",
     ["entity_type", "field_name", "source", "observation_status"],
