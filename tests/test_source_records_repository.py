@@ -168,6 +168,43 @@ def test_list_records_can_disable_fetch_status_filter() -> None:
     }
 
 
+def test_list_page_supports_optional_api_filters_and_total() -> None:
+    repository, session = make_repository()
+    expected = [SourceRecord(source="fanza", source_key="cid-001", record_type="work")]
+    scalar_result = Mock()
+    scalar_result.all.return_value = expected
+    session.scalar.return_value = 12
+    session.scalars.return_value = scalar_result
+
+    result, total = repository.list_page(
+        limit=20,
+        offset=5,
+        source=" fanza ",
+        record_type=" work ",
+        fetch_status=" success ",
+    )
+
+    assert result == expected
+    assert total == 12
+    count_statement = session.scalar.call_args.args[0]
+    data_statement = session.scalars.call_args.args[0]
+    count_sql = str(count_statement.compile(dialect=postgresql.dialect()))
+    compiled = data_statement.compile(dialect=postgresql.dialect())
+    sql = str(compiled)
+    assert "count(*)" in count_sql
+    assert "source_records.source = %(source_1)s" in sql
+    assert "source_records.record_type = %(record_type_1)s" in sql
+    assert "source_records.fetch_status = %(fetch_status_1)s" in sql
+    assert "ORDER BY javhub.source_records.created_at DESC, javhub.source_records.id DESC" in sql
+    assert compiled.params == {
+        "source_1": "fanza",
+        "record_type_1": "work",
+        "fetch_status_1": "success",
+        "param_1": 20,
+        "param_2": 5,
+    }
+
+
 def test_upsert_executes_postgresql_on_conflict_and_returns_scalar_one() -> None:
     repository, session = make_repository()
     expected = SourceRecord(source="fanza", source_key="cid-001", record_type="work")
