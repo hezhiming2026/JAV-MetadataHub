@@ -172,6 +172,28 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_create_app_registers_read_only_routes() -> None:
+    app = create_app()
+    routes = set(app.openapi()["paths"])
+
+    assert {
+        "/health",
+        "/works",
+        "/works/{work_id}",
+        "/people",
+        "/people/{person_id}",
+        "/companies",
+        "/companies/{company_id}",
+        "/series",
+        "/series/{series_id}",
+        "/tags",
+        "/tags/{tag_id}",
+        "/observations",
+        "/source-records",
+        "/source-records/{record_id}",
+    }.issubset(routes)
+
+
 @pytest.mark.parametrize(
     ("path", "item_factory", "expected_key"),
     [

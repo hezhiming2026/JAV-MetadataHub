@@ -24,7 +24,7 @@ V2/V3 可以逐步增加补充观察来源：
 
 | 阶段 | 来源 | 目标 | 工程定位 |
 | --- | --- | --- | --- |
-| V1 | R18.dev dump, FANZA/DMM API | 建立 Bronze/Silver/Gold 数据流和 canonical 模型。 | 结构化来源主链路。 |
+| V1 | R18.dev structured JSON/JSONL, FANZA/DMM API | 建立 Bronze/Silver observations 和只读 API 基础。 | 结构化来源主链路。 |
 | V2 | Javinizer-Go, MetaTube, JavDB, JavBus | 增加补充观察，并对比 provider 输出。 | 补充观察、适配器或对照实现。 |
 | V3 | JavLibrary, AVWikiDB, 其他来源 | 长尾补全、人工校对和分析增强。 | 补充观察和人工工作流。 |
 
@@ -32,8 +32,8 @@ V2/V3 可以逐步增加补充观察来源：
 
 | 来源 | 字段覆盖 | 主要注意点 | 阶段 | 工程建议 |
 | --- | --- | --- | --- | --- |
-| R18.dev dump | 番号、标题、发行日期、时长、女优、导演、maker、分类/tag、图片 URL。 | dump schema 可能变化；在线 JSON 与 dump 需要分开建模；图片许可与结构化数据不同。 | V1 | 作为可重复导入的 seed/backfill。每条导入记录进入 `source_records`，不稳定字段进入 `field_observations`。 |
-| FANZA / DMM API | 番号/商品 ID、标题、发行日期、时长、女优、导演、maker、label、series、genre、图片 URL。 | 需要 API 配置；存在 credit、地域可用性和限流参数。 | V1 | 作为官方结构化 API 来源，客户端实现限流、重试、日志和 mocked tests。 |
+| R18.dev dump | 番号、标题、发行日期、时长、女优、导演、maker、分类/tag、图片 URL。 | 当前实现只支持本地 structured JSON/JSONL records；真实 `.sql` / `.sql.gz` dump 尚未实现。 | V1 | 作为可重复导入的 seed/backfill。每条导入记录进入 `source_records`，不稳定字段进入 `field_observations`。 |
+| FANZA / DMM API | 番号/商品 ID、标题、发行日期、时长、女优、导演、maker、label、series、genre、图片 URL。 | 需要 API 配置；存在 credit、地域可用性和限流参数；当前不做 canonical promotion。 | V1 | 作为官方结构化 API 来源，已实现 client、collector、parser、observation ingestion 和 batch runner。 |
 | Javinizer-Go | 聚合后的标题、演员、studio、series、tag、图片 URL、NFO 映射。 | 它是工具/聚合层，不是 canonical 上游。 | V2 | 可作为参考实现、兼容基线或可选内部 adapter。 |
 | MetaTube | 根据 provider 返回标题、演员、导演、studio、genre、图片 URL 等。 | provider 质量不一，不是单一权威来源。 | V2 | 作为 federation/reference layer，保留 provider identity。 |
 | JavDB | 番号、标题、发行日期、时长、女优、导演、maker/studio、series、tag、封面 URL、评分类信号。 | 未确认官方 dump/API；页面结构和可用性需要按版本确认。 | V2 | 作为补充观察来源。 |
@@ -41,9 +41,9 @@ V2/V3 可以逐步增加补充观察来源：
 | JavLibrary | 番号、标题、女优、导演、maker、label、tag、评分/评论类字段。 | 社区评分和评论属于来源特定信号。 | V3 | 适合长尾补充、tag 与社区指标观察。 |
 | AVWikiDB | 番号/CID 候选、演员/导演补充、作品与人物细节。 | 公开证据完整度和稳定性需要持续校验。 | V3 | 作为 selected gap filling 和人工校对来源。 |
 
-## Canonical 来源优先级
+## 后续 Canonical 来源优先级
 
-默认字段提升优先级：
+后续字段提升优先级：
 
 ```text
 FANZA/DMM API > R18.dev dump > supplemental observations > unknown
@@ -51,7 +51,7 @@ FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 
 补充观察包括 JavDB、JavBus、JavLibrary、AVWikiDB、MetaTube、Javinizer-Go 输出。它们用于发现缺失值和冲突值，canonical 更新需要经过明确的字段级规则。
 
-字段级说明：
+字段级说明。以下是后续 canonical promotion 的设计方向，当前实现先保存 observations：
 
 - `title_ja`：优先使用 FANZA/DMM。
 - `title_en`：R18.dev 有值时优先作为英文标题候选。
@@ -77,7 +77,8 @@ FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 
 工程流程：
 
-- bulk 主路径优先使用 dump import。
+- 当前实现支持本地 structured JSON / JSONL records import。
+- 真实 `.sql` / `.sql.gz` dump restore 和 extraction 仍是后续任务。
 - 导入的 work/person/company/series/tag 记录先序列化到 `source_records`。
 - 保留 dump version、observed time、checksum 和 importer version。
 - source-specific 字段先进入 `field_observations`，再由 ingestion 规则决定是否提升。
@@ -95,8 +96,9 @@ FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 - 使用 async `httpx`、重试、限流、结构化日志，以及 mocked response 测试。
 - 测试使用 fixtures 或 mocked HTTP。
 - 日志保留请求和错误上下文，并对凭证类字段做脱敏。
-- 每个原始响应页或 detail response 存入 `source_records`。
-- parser/ingestion flow 负责创建 observations 和 canonical candidates。
+- 每个原始响应页或 item response 存入 `source_records`。
+- parser/ingestion flow 负责创建 observations。
+- canonical promotion 仍是后续任务。
 
 ## V2/V3 补充来源
 

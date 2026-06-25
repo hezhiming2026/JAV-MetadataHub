@@ -2,6 +2,9 @@
 
 本文档说明 FANZA / DMM API 在 JAV-MetadataHub 中的 V1 接入方式。它是官方结构化元数据来源，需要配置凭证、限流、重试、日志、fixtures 和 mocked tests。
 
+当前实现边界：已实现 client、collector、parser、observation ingestion、batch ingestion 和 CLI runner。
+当前不做 canonical promotion，不创建 canonical rows。
+
 ## 来源角色
 
 | 属性 | 说明 |
@@ -71,7 +74,7 @@ V1 支持参数：
 
 ## 采集策略
 
-推荐 V1 流程：
+当前已实现到 `field_observations`，后续 canonical promotion 另行实现：
 
 ```text
 FloorList discovery
@@ -79,7 +82,7 @@ FloorList discovery
     -> paginated raw response storage in source_records
     -> parser
     -> field_observations
-    -> canonical promotion through ingestion rules
+    -> future canonical promotion
 ```
 
 使用 date windows 管理分页范围。如果一个窗口结果过大，将窗口切分为更小粒度。
@@ -115,7 +118,7 @@ FloorList discovery
 | review count / rating average | `field_observations` | no | yes |
 | sample movie URL | `field_observations` if retained | no | yes |
 
-## Canonical 提升规则
+## 后续 Canonical 提升规则
 
 默认优先级：
 
@@ -123,7 +126,9 @@ FloorList discovery
 FANZA/DMM API > R18.dev dump > supplemental observations > unknown
 ```
 
-FANZA/DMM 可在解析稳定且置信度足够时填充 canonical work fields。即使字段被提升为 canonical，也保留对应 observations，便于回溯和冲突分析。
+FANZA/DMM observations 是后续 canonical promotion 的高优先级候选。当前实现只写
+`source_records` 和 `field_observations`，不填充 canonical work fields。未来字段被提升为
+canonical 时，仍应保留对应 observations，便于回溯和冲突分析。
 
 ## 限流与重试
 

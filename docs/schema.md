@@ -10,7 +10,7 @@ JAV-MetadataHub 使用三层数据模型。
 | --- | --- | --- |
 | Bronze | 尽量少解释地保留外部来源证据。 | `collector_runs`, `source_records` |
 | Silver | 将原始来源数据规范化为实体、关系、外部 ID 和字段级观察。 | `works`, `people`, `companies`, `series`, `tags`, relationship tables, `field_observations` |
-| Gold | 面向分析导出和只读 API。 | materialized views, CSV, Parquet, DuckDB exports |
+| Gold | 面向分析导出和只读 API；当前为规划对象。 | materialized views, CSV, Parquet, DuckDB exports |
 
 外部元数据的标准路径：
 
@@ -51,12 +51,13 @@ external source
 - 哪个来源声明了某个字段值？
 - 哪条 source record 支撑这个值？
 - 该值的 confidence 和 observed time 是什么？
-- observation 是 active、accepted、rejected 还是 superseded？
+- observation 是 active、rejected 还是 superseded？
 - 哪些字段在不同来源之间存在冲突？
 
 数据架构原则：
 
 - 不确定、冲突、来源特定或补充来源字段先保存在这里。
+- V1 `observation_status` 只允许 `active`、`rejected`、`superseded`。
 - canonical 字段代表当前最佳值；更新 canonical 前保留对应 observation。
 - 每个提升后的 canonical 值应至少能回溯到一个 source record 和 observation。
 - JavDB、JavBus、JavLibrary、AVWikiDB 等补充来源先写 observations，再由字段级规则决定是否提升。
@@ -80,7 +81,7 @@ Canonical 字段是 Silver entity tables 上可查询、强类型的字段，表
 - alias names、retired names、language-specific names。
 - site-specific flags，例如 subtitles、4K、leak labels、limited editions、version suffixes。
 
-提升规则：
+后续提升规则：
 
 - 空的 canonical 字段可以由高置信 V1 observations 填充。
 - 已有 canonical 字段通过 higher-priority sources 或 explicit resolution logic 更新。
@@ -115,7 +116,7 @@ schema 位于 PostgreSQL 的 `javhub` schema 下。默认使用 `BIGSERIAL` prim
 
 ## Gold 对象
 
-Gold objects 是分析输出，不是权威来源证据。
+Gold objects 是规划中的分析输出，不是权威来源证据。
 
 推荐 Gold views 或 exports：
 
@@ -128,15 +129,15 @@ Gold objects 是分析输出，不是权威来源证据。
 
 Gold exports 应能从 Bronze 和 Silver 数据复现。
 
-## 实体解析规则
+## 后续实体解析规则
 
-V1 的作品自动匹配可以使用：
+后续作品自动匹配可以使用：
 
 - 相同 source external ID。
 - FANZA/DMM `content_id`。
 - `code_norm + maker + release_date`，前提是三者都可用且一致。
 
-V1 的人物自动匹配可以使用：
+后续人物自动匹配可以使用：
 
 - 相同 source person external ID。
 
