@@ -3,6 +3,7 @@ from jav_metadatahub.repositories.canonical import (
     PersonRepository,
     SeriesRepository,
     TagRepository,
+    WorkExternalIdRepository,
     WorkRepository,
 )
 from jav_metadatahub.repositories.collector_runs import CollectorRunRepository
@@ -17,5 +18,6 @@ __all__ = [
     "SeriesRepository",
     "SourceRecordRepository",
     "TagRepository",
+    "WorkExternalIdRepository",
     "WorkRepository",
 ]

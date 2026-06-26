@@ -186,6 +186,39 @@ def test_list_page_filters_counts_and_orders_results() -> None:
     }
 
 
+def test_list_active_fanza_work_entity_ids_pages_distinct_groups() -> None:
+    repository, session = make_repository()
+    session.scalar.return_value = 2
+    session.scalars.return_value.all.return_value = [10, 20]
+
+    entity_ids, total = repository.list_active_fanza_work_entity_ids(limit=25, offset=5)
+
+    assert entity_ids == [10, 20]
+    assert total == 2
+    statement = session.scalars.call_args.args[0]
+    sql, params = compile_sql(statement)
+    assert "SELECT DISTINCT javhub.field_observations.entity_id" in sql
+    assert "field_observations.entity_type = %(entity_type_1)s" in sql
+    assert "field_observations.source = %(source_1)s" in sql
+    assert "field_observations.observation_status = %(observation_status_1)s" in sql
+    assert "ORDER BY javhub.field_observations.entity_id ASC" in sql
+    assert params == {
+        "entity_type_1": "fanza_work",
+        "source_1": "fanza",
+        "observation_status_1": "active",
+        "param_1": 25,
+        "param_2": 5,
+    }
+
+
+def test_list_active_fanza_work_observations_empty_entities_does_not_query() -> None:
+    repository, session = make_repository()
+
+    assert repository.list_active_fanza_work_observations([]) == []
+
+    session.scalars.assert_not_called()
+
+
 def test_find_duplicate_matches_active_without_status_in_fact_key() -> None:
     repository, session = make_repository()
     expected = FieldObservation(entity_type="work", entity_id=1, field_name="title", source="r18")
