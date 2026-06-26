@@ -248,6 +248,56 @@ class FieldObservationRepository:
         )
         return list(self.session.scalars(statement).all()), total
 
+    def list_active_fanza_work_entity_ids(self, limit: int, offset: int) -> tuple[list[int], int]:
+        cleaned_limit = _validate_positive_int(limit, "limit")
+        cleaned_offset = _validate_non_negative_int(offset, "offset")
+        filters = (
+            FieldObservation.entity_type == "fanza_work",
+            FieldObservation.source == "fanza",
+            FieldObservation.observation_status == "active",
+        )
+        total = (
+            self.session.scalar(
+                select(func.count(func.distinct(FieldObservation.entity_id))).where(*filters)
+            )
+            or 0
+        )
+        statement = (
+            select(FieldObservation.entity_id)
+            .where(*filters)
+            .distinct()
+            .order_by(FieldObservation.entity_id.asc())
+            .limit(cleaned_limit)
+            .offset(cleaned_offset)
+        )
+        return list(self.session.scalars(statement).all()), total
+
+    def list_active_fanza_work_observations(
+        self,
+        entity_ids: list[int],
+    ) -> list[FieldObservation]:
+        cleaned_entity_ids = [
+            _validate_positive_int(entity_id, "entity_id") for entity_id in entity_ids
+        ]
+        if not cleaned_entity_ids:
+            return []
+
+        statement = (
+            select(FieldObservation)
+            .where(
+                FieldObservation.entity_type == "fanza_work",
+                FieldObservation.source == "fanza",
+                FieldObservation.observation_status == "active",
+                FieldObservation.entity_id.in_(cleaned_entity_ids),
+            )
+            .order_by(
+                FieldObservation.entity_id.asc(),
+                FieldObservation.observed_at.desc(),
+                FieldObservation.id.desc(),
+            )
+        )
+        return list(self.session.scalars(statement).all())
+
     def find_duplicate(
         self,
         *,

@@ -8,6 +8,11 @@ from jav_metadatahub.services.fanza_ingestion import (
     FanzaObservationIngestionService,
 )
 from jav_metadatahub.services.observations import FieldObservationService
+from jav_metadatahub.services.work_promotion import (
+    WorkPromotionError,
+    WorkPromotionResult,
+    WorkPromotionService,
+)
 
 __all__ = [
     "FanzaObservationBatchError",
@@ -16,4 +21,7 @@ __all__ = [
     "FanzaIngestionResult",
     "FanzaObservationIngestionService",
     "FieldObservationService",
+    "WorkPromotionError",
+    "WorkPromotionResult",
+    "WorkPromotionService",
 ]

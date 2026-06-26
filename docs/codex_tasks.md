@@ -147,11 +147,25 @@
 - 保持默认测试不依赖真实 PostgreSQL。
 - 运行 pytest / ruff / format check / mypy。
 
+### Task 14：Canonical Promotion MVP - Works
+
+实现 FANZA works-only canonical promotion，从 `entity_type="fanza_work"` 的 active
+`field_observations` 按 distinct staging group 提升 `works` 和 `work_external_ids`。
+
+当前边界：
+
+- `limit / offset` 作用于 distinct `entity_id` staging groups，不切分同一作品的 observations。
+- 支持默认 rollback、`--commit` 提交、`--dry-run` 只读统计和 `--dry-run --commit` 非法组合。
+- 重复运行不重复创建同一 work 或同一 external ID。
+- 只创建或更新 `works` 与 `work_external_ids`。
+- 不创建 people、companies、series、tags 或 relationship rows。
+- 不实现 entity resolution、entity merge、exporter 或 Gold datasets。
+
 ## 后续 Backlog
 
-### Backlog：canonical promotion
+### Backlog：dimensions / relationships canonical promotion
 
-实现从 high-confidence observations 到 canonical fields 的显式提升规则。
+实现从 high-confidence observations 到 people、companies、series、tags 和 relationships 的显式提升规则。
 
 要求：
 

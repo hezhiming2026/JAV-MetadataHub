@@ -17,8 +17,9 @@ external metadata source
     -> read-only API
 ```
 
-当前实现已经覆盖 source evidence、observations、FANZA/R18 的基础 ingestion flow 和只读 API。
-canonical promotion、entity resolution、Gold exports 和 CSV/Parquet exporter 仍是后续计划。
+当前实现已经覆盖 source evidence、observations、FANZA/R18 的基础 ingestion flow、FANZA
+works-only canonical promotion MVP 和只读 API。dimensions/relationships promotion、entity
+resolution、Gold exports 和 CSV/Parquet exporter 仍是后续计划。
 
 ## 数据分层
 
@@ -26,7 +27,7 @@ canonical promotion、entity resolution、Gold exports 和 CSV/Parquet exporter 
 | --- | --- | --- |
 | Bronze | 已实现 | `collector_runs`, `source_records` |
 | Silver observations | 已实现 | `field_observations` |
-| Silver canonical tables | schema 和只读 repository/API 已实现；自动提升规则未实现 | `works`, `people`, `companies`, `series`, `tags`, relationship tables |
+| Silver canonical tables | schema 和只读 repository/API 已实现；FANZA works-only promotion MVP 已实现；dimensions 和 relationships 自动提升规则未实现 | `works`, `people`, `companies`, `series`, `tags`, relationship tables |
 | Gold | 未实现 | future views / CSV / Parquet / DuckDB exports |
 
 ## Source Records
@@ -83,7 +84,7 @@ local JSON/JSONL rows
 - batch ingestion
 - CLI runner
 
-当前链路：
+当前 observation 链路：
 
 ```text
 FanzaClient
@@ -94,7 +95,8 @@ FanzaClient
     -> field_observations
 ```
 
-FANZA observations 显式使用较高 confidence，但当前不创建 canonical rows，也不做 canonical promotion。
+FANZA observations 显式使用较高 confidence。当前已支持 works-only canonical promotion MVP，
+但不创建 people、companies、series、tags 或 relationship rows。
 
 ## FastAPI Read-only API
 
@@ -135,7 +137,7 @@ API routes 保持薄层：
 
 以下能力是 backlog，不属于当前已实现系统：
 
-- canonical promotion rules。
+- dimensions / relationships canonical promotion rules。
 - entity resolution / merge workflow。
 - CSV / Parquet exporter。
 - Gold datasets / materialized views / DuckDB exports。
